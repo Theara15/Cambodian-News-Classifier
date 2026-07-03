@@ -114,7 +114,7 @@ CSS = """
         box-shadow:0 18px 40px rgba(15, 23, 42, 0.06);
     }
     .card-title {font-size:22px; font-weight:800; color:#111827; margin:0;}
-    .card-sub {font-size:14px; color:#64748b; margin-top:8px; line-height:1.5;}
+    .card-sub {font-size:14px; color:#111827; margin-top:8px; line-height:1.5;}
 
     .result-head {
         background:#ffffff;
@@ -123,7 +123,7 @@ CSS = """
         padding:24px 28px;
         margin-bottom:18px;
     }
-    .result-kicker {font-size:11px; letter-spacing:1.5px; color:#64748b; font-weight:700;}
+    .result-kicker {font-size:11px; letter-spacing:1.5px; color:#111827; font-weight:700;}
     .result-cat {font-size:32px; font-weight:800; margin:10px 0 0 0; text-transform:uppercase; color:#111827;}
     .conf-pill {
         float:right; background:#2563eb; color:white; font-weight:700;
@@ -138,13 +138,13 @@ CSS = """
         text-align:center;
     }
     .stat-num {font-size:28px; font-weight:800; color:#111827;}
-    .stat-lab {font-size:12px; color:#64748b; margin-top:4px;}
+    .stat-lab {font-size:12px; color:#111827; margin-top:4px;}
 
     .bar-row {display:flex; align-items:center; margin:10px 0; font-size:13px;}
-    .bar-name {width:110px; color:#475569; text-transform:capitalize;}
+    .bar-name {width:110px; color:#111827; text-transform:capitalize;}
     .bar-track {flex:1; background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden; margin:0 12px;}
     .bar-fill {height:100%; border-radius:6px;}
-    .bar-val {width:54px; text-align:right; font-weight:700; color:#0f172a;}
+    .bar-val {width:54px; text-align:right; font-weight:700; color:#111827;}
 
     .ok-note {color:#16a34a; font-size:13px; font-weight:600;}
     .warn-note {color:#d97706; font-size:13px; font-weight:600;}
@@ -160,7 +160,7 @@ CSS = """
         color: #111827 !important;
         min-height: 260px;
     }
-    .stTextArea textarea::placeholder {color:#94a3b8 !important;}
+    .stTextArea textarea::placeholder {color:#6b7280 !important;}
 
     .page-nav-card {
         background: #ffffff;
@@ -177,7 +177,7 @@ CSS = """
     }
     .stRadio button {
         background: #f8fafc !important;
-        color: #475569 !important;
+        color: #111827 !important;
         border: 1px solid #e5e7eb !important;
         border-radius: 999px !important;
         padding: 10px 18px !important;
@@ -191,16 +191,99 @@ CSS = """
         box-shadow: inset 0 -2px 0 0 #2563eb;
     }
 
-    .input-hint {color: #64748b; font-size:12px; margin-top:6px;}
-    .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#475569;}
-    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px;}
+    .input-hint {color: #111827; font-size:12px; margin-top:6px;}
+    .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#111827;}
+    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px; color:#111827;}
     .feature-list li::before {content:'✓'; color:#16a34a; font-weight:700;}
 
     div.stButton > button {border-radius:12px; font-weight:700; background: #2563eb; color:white; border:none;}
     div.stButton > button:hover {background: #1e40af;}
     div.stButton > button[disabled] {background: #93c5fd; color: #ffffff;}
 
-    .placeholder-card {text-align:center; color:#475569;}
+    .placeholder-card {text-align:center; color:#111827;}
+    
+    /* Style for file uploader */
+    .stFileUploader label {
+        color: #111827 !important;
+        font-weight: 600 !important;
+    }
+    .stFileUploader > div {
+        color: #111827 !important;
+    }
+    
+    /* Style for success messages */
+    .stAlert {
+        color: #111827 !important;
+    }
+    .stAlert p {
+        color: #111827 !important;
+    }
+    
+    /* Style for info messages */
+    .stAlert[data-baseweb="notification"] {
+        color: #111827 !important;
+    }
+    
+    /* Style for selectbox labels */
+    .stSelectbox label {
+        color: #111827 !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Style for metrics */
+    [data-testid="metric-container"] label {
+        color: #111827 !important;
+    }
+    [data-testid="metric-container"] div {
+        color: #111827 !important;
+    }
+    
+    /* Style for subheaders in About page */
+    .stSubheader {
+        color: #111827 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Style for captions */
+    .stCaption {
+        color: #111827 !important;
+    }
+    
+    /* Style for success messages */
+    .stSuccess {
+        color: #111827 !important;
+    }
+    .stSuccess p {
+        color: #111827 !important;
+    }
+    
+    /* Style for text input labels */
+    .stTextInput label {
+        color: #111827 !important;
+    }
+    
+    /* Style for text area labels */
+    .stTextArea label {
+        color: #111827 !important;
+    }
+    
+    /* Style for tabs */
+    .stTabs [data-baseweb="tab"] {
+        color: #111827 !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #1d4ed8 !important;
+    }
+    
+    /* Style for download buttons */
+    .stDownloadButton button {
+        background: #2563eb !important;
+        color: white !important;
+    }
+    .stDownloadButton button:hover {
+        background: #1e40af !important;
+    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -259,7 +342,7 @@ def render_header() -> None:
 def render_scores(scores: dict[str, float]) -> None:
     ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
     parts = [
-        '<div style="font-weight:700;color:#374151;margin:6px 0 4px;">'
+        '<div style="font-weight:700;color:#111827;margin:6px 0 4px;">'
         "📊 Confidence Scores</div>"
     ]
     for cat, prob in ordered:
@@ -293,7 +376,7 @@ def page_classifier() -> None:
                 <p class="card-title">Input Section</p>
                 <p class="card-sub">Paste or upload news text for category classification.</p>
               </div>
-              <div style="color:#64748b;font-size:13px;">{chars:,} chars &nbsp;|&nbsp; {words:,} words</div>
+              <div style="color:#111827;font-size:13px;">{chars:,} chars &nbsp;|&nbsp; {words:,} words</div>
             </div>
             """
         )
@@ -317,13 +400,17 @@ def page_classifier() -> None:
             )
 
         with tab_pdf:
-            pdf = st.file_uploader("Upload a PDF article", type=["pdf"])
+            st.markdown(
+                '<div style="color:#111827;font-weight:600;margin-bottom:8px;">Upload a PDF article</div>',
+                unsafe_allow_html=True,
+            )
+            pdf = st.file_uploader("Upload a PDF article", type=["pdf"], label_visibility="collapsed")
             if pdf is not None:
                 extracted = _read_pdf(pdf)
                 if extracted:
                     st.session_state.input_text = extracted
                     text = extracted
-                    st.success(f"Extracted {len(extracted.split()):,} words from PDF.")
+                    st.success(f"✅ Extracted {len(extracted.split()):,} words from PDF.")
                     st.text_area("Extracted text", value=extracted, height=180)
 
         words = len(text.split())
@@ -335,7 +422,7 @@ def page_classifier() -> None:
         if analyze:
             if words < MIN_WORDS:
                 st.warning(
-                    f"Only {words} words detected. {MIN_WORDS}+ words give more "
+                    f"⚠️ Only {words} words detected. {MIN_WORDS}+ words give more "
                     "reliable results, but classifying anyway."
                 )
             with st.spinner("Running inference…"):
@@ -361,7 +448,7 @@ def page_classifier() -> None:
                 '<div class="card placeholder-card">'
                 "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
                 "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
-                "<div style=\"margin-top:12px;color:#64748b;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
+                "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
                 "<ul class=\"feature-list\">"
                 "<li>Supports news text input</li>"
                 "<li>6-category classification model</li>"
@@ -398,12 +485,12 @@ def page_classifier() -> None:
 
         if result["words"] >= MIN_WORDS:
             st.markdown(
-                '<p class="ok-note">✓ Text length is optimal for classification</p>',
+                '<p class="ok-note">✅ Text length is optimal for classification</p>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<p class="warn-note">⚠ Short text — prediction may be less reliable</p>',
+                '<p class="warn-note">⚠️ Short text — prediction may be less reliable</p>',
                 unsafe_allow_html=True,
             )
 
@@ -486,10 +573,10 @@ def page_history() -> None:
             f"""
             <div class="card" style="margin-bottom:10px;padding:14px 18px;">
               <span class="badge" style="background:{color};">{h['category']}</span>
-              <span style="float:right;color:#6b7280;font-size:12px;">
+              <span style="float:right;color:#111827;font-size:12px;">
                 {h['confidence']*100:.1f}% &middot; {h['model']} &middot; {h['timestamp']}
               </span>
-              <div style="margin-top:8px;color:#374151;font-size:14px;">{h['preview']}&hellip;</div>
+              <div style="margin-top:8px;color:#111827;font-size:14px;">{h['preview']}&hellip;</div>
             </div>
             """
         )
@@ -532,11 +619,14 @@ def page_about() -> None:
     st.markdown('<p class="card-title">About</p>', unsafe_allow_html=True)
     st.markdown(
         """
+        <div style="color:#111827;">
         This dashboard classifies English-language Cambodian news articles into one of
         five categories using transformer encoders fine-tuned on a custom corpus scraped
         from Cambodian news outlets. It is the deployment deliverable (Part 3) of the
         thesis project.
-        """
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     st.subheader("Categories")
@@ -567,23 +657,29 @@ def page_about() -> None:
     st.subheader("Pipeline")
     st.markdown(
         """
+        <div style="color:#111827;">
         1. **Preprocess** — lowercase, strip HTML / URLs / emails / digits, drop
-           stop-words (identical to training, via `preprocessing.clean.preprocess`).
+           stop-words (identical to training, via `preprocessing.clean.preprocess`).<br>
         2. **Tokenize** — model-specific HuggingFace tokenizer, `max_length=512`,
-           body text only.
-        3. **Classify** — `TransformerClassifier` ([CLS] → 512 → LogSoftmax over 5 classes).
+           body text only.<br>
+        3. **Classify** — `TransformerClassifier` ([CLS] → 512 → LogSoftmax over 5 classes).<br>
         4. **Report** — `exp()` of log-probabilities gives the confidence scores shown.
-        """
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     st.subheader("Known limitations")
     st.markdown(
         """
+        <div style="color:#111827;">
         - Trained only on a handful of Cambodian English-language outlets; may
-          underperform on other regions or styles.
-        - English only — Khmer-language or heavily code-switched text is out of scope.
+          underperform on other regions or styles.<br>
+        - English only — Khmer-language or heavily code-switched text is out of scope.<br>
         - History is per-session and clears on browser refresh.
-        """
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 
