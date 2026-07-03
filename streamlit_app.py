@@ -82,30 +82,6 @@ CSS = """
     .brand-title {color:white; font-size:22px; font-weight:800; line-height:1.05;}
     .brand-sub {color:rgba(255,255,255,0.8); font-size:11px; letter-spacing:1.5px; font-weight:600;}
 
-    .page-nav {
-        display:flex; gap: 12px;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        padding: 12px;
-        margin-bottom: 24px;
-    }
-    .page-nav button {
-        border:none;
-        background: transparent;
-        color: #475569;
-        font-weight: 600;
-        padding: 10px 18px;
-        border-radius: 999px;
-        transition: all 0.2s ease;
-    }
-    .page-nav button[data-selected="true"] {
-        background: #eff6ff;
-        color: #1d4ed8;
-        box-shadow: inset 0 -2px 0 0 #2563eb;
-    }
-    .page-nav button:hover {background: #f8fafc;}
-
     .card {
         background:#ffffff;
         border:1px solid #e5e7eb;
@@ -170,7 +146,7 @@ CSS = """
         margin-bottom: 24px;
     }
     
-    /* Navigation tabs - make text black */
+    /* Navigation tabs - custom styling for black text */
     .stRadio {
         width: 100%;
     }
@@ -178,29 +154,41 @@ CSS = """
         gap: 10px;
         display: flex;
         justify-content: flex-start;
+        flex-wrap: wrap;
     }
+    /* Force radio button labels to be black */
     .stRadio label {
         color: #111827 !important;
         font-weight: 600 !important;
         font-size: 14px !important;
-    }
-    .stRadio button {
         background: transparent !important;
-        color: #111827 !important;
-        border: none !important;
-        border-radius: 8px !important;
         padding: 8px 18px !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        min-width: auto !important;
+        border-radius: 8px !important;
+        border: none !important;
+        cursor: pointer !important;
     }
-    .stRadio button[aria-checked="true"] {
+    .stRadio label:hover {
+        background: #f1f5f9 !important;
+    }
+    /* Selected state */
+    .stRadio label[data-baseweb="radio"] {
+        color: #111827 !important;
+    }
+    .stRadio div[role="radiogroup"] label {
+        color: #111827 !important;
+    }
+    /* Force the actual radio button text */
+    .stRadio span {
+        color: #111827 !important;
+    }
+    .stRadio div p {
+        color: #111827 !important;
+    }
+    /* Selected tab styling */
+    .stRadio label[aria-checked="true"] {
         background: #eff6ff !important;
         color: #1d4ed8 !important;
         box-shadow: inset 0 -2px 0 0 #2563eb !important;
-    }
-    .stRadio button:hover {
-        background: #f8fafc !important;
     }
 
     .input-hint {color: #111827; font-size:12px; margin-top:6px;}
@@ -353,11 +341,7 @@ def _color(cat: str) -> str:
 
 
 def html_block(html: str) -> None:
-    """Render raw HTML, collapsing per-line indentation.
-
-    Indented multi-line strings are otherwise treated as markdown code blocks
-    and shown verbatim, so we strip leading whitespace from every line first.
-    """
+    """Render raw HTML, collapsing per-line indentation."""
     cleaned = "".join(line.strip() for line in html.splitlines())
     st.markdown(cleaned, unsafe_allow_html=True)
 
@@ -570,7 +554,7 @@ def _read_pdf(uploaded) -> str:
             for page in pdf.pages:
                 text_parts.append(page.extract_text() or "")
         return "\n".join(text_parts).strip()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         st.error(f"Could not read PDF: {exc}")
         return ""
 
@@ -693,7 +677,6 @@ def page_about() -> None:
             for key, info in MODEL_INFO.items()
         ]
     )
-    # Use dataframe instead of table for better visibility
     st.dataframe(rank, hide_index=True, use_container_width=True)
     st.success(
         "**RoBERTa** is the recommended default — best accuracy (91.75%) and best "
@@ -777,20 +760,30 @@ def render_sidebar() -> None:
 
 def main() -> None:
     render_header()
-    html_block(
-        """
-        <div class="page-nav-card">
-        """
-    )
-    st.radio(
-        "",
-        ["Classifier", "Session History", "About"],
-        index=["Classifier", "Session History", "About"].index(st.session_state.page),
-        key="page",
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-    html_block("</div>")
+    
+    # Custom navigation using columns with buttons
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col1:
+        if st.button("📊 Classifier", use_container_width=True, 
+                     type="primary" if st.session_state.page == "Classifier" else "secondary"):
+            st.session_state.page = "Classifier"
+            st.rerun()
+    
+    with col2:
+        if st.button("📋 Session History", use_container_width=True,
+                     type="primary" if st.session_state.page == "Session History" else "secondary"):
+            st.session_state.page = "Session History"
+            st.rerun()
+    
+    with col3:
+        if st.button("ℹ️ About", use_container_width=True,
+                     type="primary" if st.session_state.page == "About" else "secondary"):
+            st.session_state.page = "About"
+            st.rerun()
+    
+    st.markdown("---")
+    
     render_sidebar()
     page = st.session_state.page
     if page == "Classifier":
