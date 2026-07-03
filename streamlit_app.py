@@ -47,6 +47,7 @@ CATEGORY_COLORS = {
 DEFAULT_COLOR = "#64748b"
 
 MIN_WORDS = 50
+PAGES = ["Classifier", "Session History", "About"]
 
 FONTS = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -85,51 +86,56 @@ CSS = """
         max-width: 1180px;
     }
 
-    /* --------------------------- Header --------------------------- */
-    .app-header {
+    /* --------------------------- Header + nav (single fused bar) --------------------------- */
+    .st-key-app_header {
         background: #1e3a8a;
         border-radius: 14px;
-        padding: 18px 26px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        padding: 10px 22px;
         margin-bottom: 22px;
-        color: white;
     }
-    .brand {display: flex; align-items: center; gap: 14px;}
+    .st-key-app_header [data-testid="stHorizontalBlock"] {
+        align-items: center;
+    }
+    .brand {display: flex; align-items: center; gap: 12px; padding: 6px 0;}
     .brand-logo {
-        width: 42px; height: 42px; border-radius: 11px;
+        width: 38px; height: 38px; border-radius: 10px;
         background: linear-gradient(135deg, #3b82f6, #2563eb);
         display:flex; align-items:center; justify-content:center;
-        font-size: 20px; color:white;
+        font-size: 18px; color:white; flex-shrink:0;
     }
-    .brand-title {color:white; font-size:19px; font-weight:700; line-height:1.1;}
+    .brand-title {color:white; font-size:17px; font-weight:700; line-height:1.1;}
     .brand-sub {
-        color:rgba(255,255,255,0.75); font-size:10.5px;
-        letter-spacing:1.8px; font-weight:600; margin-top:3px; text-transform:uppercase;
+        color:rgba(255,255,255,0.7); font-size:10px;
+        letter-spacing:1.6px; font-weight:600; margin-top:3px; text-transform:uppercase;
     }
 
-    /* --------------------------- Page nav (radio) --------------------------- */
-    .page-nav-card {
-        background: transparent;
-        padding: 0;
-        margin-bottom: 22px;
-    }
-    .stRadio { width: 100%; }
-    .stRadio > div { gap: 8px; }
-    .stRadio button {
-        background: transparent !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 8px 14px !important;
+    /* nav buttons live inside the header bar as plain/primary Streamlit buttons */
+    .st-key-app_header div.stButton {display:flex; justify-content:flex-end;}
+    .st-key-app_header div.stButton > button {
         font-family: 'Inter', sans-serif !important;
         font-size: 13.5px !important;
-        font-weight: 600;
-        color: #475569 !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        padding: 7px 16px !important;
+        box-shadow: none !important;
+        white-space: nowrap;
     }
-    .stRadio button[aria-checked="true"] {
-        background: #eef2ff !important;
-        color: #1e3a8a !important;
+    .st-key-app_header div.stButton > button[kind="secondary"] {
+        background: transparent !important;
+        color: rgba(255,255,255,0.72) !important;
+        border: none !important;
+    }
+    .st-key-app_header div.stButton > button[kind="secondary"]:hover {
+        background: rgba(255,255,255,0.08) !important;
+        color: #ffffff !important;
+    }
+    .st-key-app_header div.stButton > button[kind="primary"] {
+        background: rgba(255,255,255,0.16) !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .st-key-app_header div.stButton > button[kind="primary"]:hover {
+        background: rgba(255,255,255,0.22) !important;
     }
 
     /* --------------------------- Cards --------------------------- */
@@ -301,22 +307,36 @@ def html_block(html: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Header / navigation
+# Header + navigation — fused into a single navy bar
 # --------------------------------------------------------------------------- #
-def render_header() -> None:
-    html_block(
-        """
-        <div class="app-header">
-          <div class="brand">
-            <div class="brand-logo">📰</div>
-            <div>
-              <div class="brand-title">Cambodian News Classifier</div>
-              <div class="brand-sub">Multi-class news article categorization</div>
-            </div>
-          </div>
-        </div>
-        """
-    )
+def render_header_nav() -> None:
+    with st.container(key="app_header"):
+        col_brand, *nav_cols = st.columns([2.4] + [1] * len(PAGES))
+
+        with col_brand:
+            html_block(
+                """
+                <div class="brand">
+                  <div class="brand-logo">📰</div>
+                  <div>
+                    <div class="brand-title">Cambodian News Classifier</div>
+                    <div class="brand-sub">Multi-class AI analysis</div>
+                  </div>
+                </div>
+                """
+            )
+
+        for col, label in zip(nav_cols, PAGES):
+            with col:
+                is_active = st.session_state.page == label
+                if st.button(
+                    label,
+                    key=f"nav_{label}",
+                    type="primary" if is_active else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state.page = label
+                    st.rerun()
 
 
 # --------------------------------------------------------------------------- #
@@ -357,7 +377,7 @@ def page_classifier() -> None:
             <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;">
               <div>
                 <p class="card-title">Input Section</p>
-                <p class="card-sub">Paste or upload news text for category classification.</p>
+                <p class="card-sub">Paste news text for classification.</p>
               </div>
               <div style="color:#64748b;font-size:13px;">{chars:,} chars &nbsp;|&nbsp; {words:,} words</div>
             </div>
@@ -398,7 +418,7 @@ def page_classifier() -> None:
 
         words = len(text.split())
         analyze = st.button(
-            "Analyze Text",
+            "⚙️ Analyze Text",
             use_container_width=True,
             disabled=words == 0,
         )
@@ -707,21 +727,7 @@ def render_sidebar() -> None:
 
 
 def main() -> None:
-    render_header()
-    html_block(
-        """
-        <div class="page-nav-card">
-        """
-    )
-    st.radio(
-        "",
-        ["Classifier", "Session History", "About"],
-        index=["Classifier", "Session History", "About"].index(st.session_state.page),
-        key="page",
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-    html_block("</div>")
+    render_header_nav()
     render_sidebar()
     page = st.session_state.page
     if page == "Classifier":
