@@ -169,26 +169,38 @@ CSS = """
         padding: 16px 20px;
         margin-bottom: 24px;
     }
+    
+    /* Navigation tabs - make text black */
     .stRadio {
         width: 100%;
     }
     .stRadio > div {
         gap: 10px;
+        display: flex;
+        justify-content: flex-start;
+    }
+    .stRadio label {
+        color: #111827 !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
     }
     .stRadio button {
-        background: #f8fafc !important;
+        background: transparent !important;
         color: #111827 !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 999px !important;
-        padding: 10px 18px !important;
-        font-weight: 700;
-        min-width: 140px;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 8px 18px !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        min-width: auto !important;
     }
     .stRadio button[aria-checked="true"] {
         background: #eff6ff !important;
         color: #1d4ed8 !important;
-        border-color: #93c5fd !important;
-        box-shadow: inset 0 -2px 0 0 #2563eb;
+        box-shadow: inset 0 -2px 0 0 #2563eb !important;
+    }
+    .stRadio button:hover {
+        background: #f8fafc !important;
     }
 
     .input-hint {color: #111827; font-size:12px; margin-top:6px;}
