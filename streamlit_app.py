@@ -201,6 +201,34 @@ CSS = """
     div.stButton > button[disabled] {background: #93c5fd; color: #ffffff;}
 
     .placeholder-card {text-align:center; color:#475569;}
+
+    /* ------------------------------------------------------------------
+       FORCE READABLE TEXT
+       Streamlit's own theme CSS can win specificity battles over the
+       custom classes above, leaving labels/tabs/radio text light-on-light
+       and hard to read (this is the same "invisible text" issue as the
+       HTML version — Streamlit ships a dark-mode-aware default that can
+       clash with a custom light theme). Force solid black + white
+       backgrounds here as a final override layer.
+       ------------------------------------------------------------------ */
+    .card-title, .card-sub,
+    label, .stSelectbox label, .stTextArea label, .stTextInput label,
+    div[data-baseweb="select"] * ,
+    .stTabs [data-baseweb="tab"] p,
+    .stTabs [data-baseweb="tab"],
+    .stRadio label p,
+    .stRadio button,
+    .stRadio button p {
+        color: #000000 !important;
+    }
+
+    div[data-baseweb="select"] > div {
+        background: #ffffff !important;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        background: #f8fafc !important;
+    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
