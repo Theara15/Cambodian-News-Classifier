@@ -759,3 +759,28 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* --------------------------------------------------------------------
+   FORCE READABLE TEXT
+   These elements were still hard to read (light text on light/white
+   backgrounds). Forcing solid black + white input backgrounds here,
+   as an override layer, so there's no ambiguity regardless of what
+   the variables above resolve to.
+   -------------------------------------------------------------------- */
+.card-title,
+.card-sub,
+.counter,
+.model-label,
+.field-label,
+.field-hint,
+.model-select,
+.tab,
+.tab.active,
+.nav-btn,
+.nav-btn.active {
+  color: #000000 !important;
+}
+
+.model-select {
+  background: #ffffff !important;
+}
