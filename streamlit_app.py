@@ -3,6 +3,10 @@
 Run from the project root:
 
     streamlit run streamlit_app.py
+
+Serves the four fine-tuned ``undersampling_no_environment`` encoders (BERT,
+DistilBERT, RoBERTa, ELECTRA) behind a single classifier UI with session
+history and an about/model-card page.
 """
 
 from __future__ import annotations
@@ -23,7 +27,7 @@ from inference.predictor import (
 )
 
 # --------------------------------------------------------------------------- #
-# Page config
+# Page config + theme
 # --------------------------------------------------------------------------- #
 st.set_page_config(
     page_title="Cambodian News Classifier",
@@ -32,10 +36,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Category colors
+# Per-category accent colours (consistent across the whole app).
 CATEGORY_COLORS = {
     "politics": "#7c3aed",
-    "technology": "#10b981", 
+    "technology": "#10b981",
     "economics": "#3b82f6",
     "health": "#0ea5e9",
     "sports": "#f59e0b",
@@ -44,449 +48,159 @@ DEFAULT_COLOR = "#64748b"
 
 MIN_WORDS = 50
 
-# --------------------------------------------------------------------------- #
-# CSS - Matches screenshots precisely
-# --------------------------------------------------------------------------- #
 CSS = """
 <style>
-    /* Hide Streamlit branding */
-    #MainMenu, footer, header[data-testid="stHeader"] {
-        visibility: hidden;
-    }
-    
-    .stApp {
-        background: #f0f2f6 !important;
-    }
-    
-    .main .block-container {
+    /* hide default chrome */
+    #MainMenu, footer, header[data-testid="stHeader"] {visibility: hidden;}
+    body, .stApp, .main {background: #f8f9fb !important; color: #111827 !important;}
+    .block-container {
+        background: #ffffff !important;
         padding-top: 1rem;
         padding-bottom: 2rem;
-        max-width: 1200px;
+        border-radius: 24px;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+        max-width: 1180px;
     }
-    
-    /* === HEADER === */
     .app-header {
-        background: #1a365d;
-        border-radius: 12px;
-        padding: 16px 24px;
-        margin-bottom: 20px;
+        background: #1e3a8a;
+        border-radius: 18px;
+        padding: 20px 28px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-    }
-    
-    .brand {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-    
-    .brand-icon {
-        width: 40px;
-        height: 40px;
-        background: rgba(255,255,255,0.12);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-    }
-    
-    .brand-title {
+        margin-bottom: 24px;
         color: white;
-        font-size: 18px;
-        font-weight: 700;
-        margin: 0;
+        box-shadow: 0 16px 40px rgba(30, 58, 138, 0.16);
     }
-    
-    .brand-sub {
-        color: rgba(255,255,255,0.65);
-        font-size: 10px;
-        font-weight: 500;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-top: 2px;
+    .brand {display: flex; align-items: center; gap: 14px;}
+    .brand-logo {
+        width: 46px; height: 46px; border-radius: 14px;
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        display:flex; align-items:center; justify-content:center;
+        font-size: 22px; color:white; font-weight:800;
     }
-    
-    .header-badge {
-        background: rgba(255,255,255,0.1);
-        border-radius: 16px;
-        padding: 4px 14px;
-        color: rgba(255,255,255,0.7);
-        font-size: 11px;
-        font-weight: 500;
-    }
-    
-    /* === TABS === */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 4px;
-        background: transparent;
-        border: none;
-        padding: 0;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 8px 18px;
-        font-weight: 600;
-        font-size: 13px;
-        color: #64748b;
-        background: transparent;
-        border: none;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: #eef2ff !important;
-        color: #1a365d !important;
-    }
-    
-    .stTabs [data-baseweb="tab-highlight"] {
-        display: none;
-    }
-    
-    /* === CARDS === */
-    .card {
-        background: white;
-        border-radius: 14px;
-        padding: 20px 24px;
+    .brand-title {color:white; font-size:22px; font-weight:800; line-height:1.05;}
+    .brand-sub {color:rgba(255,255,255,0.8); font-size:11px; letter-spacing:1.5px; font-weight:600;}
+
+    .page-nav {
+        display:flex; gap: 12px;
+        background: #ffffff;
         border: 1px solid #e5e7eb;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        margin-bottom: 16px;
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 24px;
     }
-    
-    .card-title {
-        font-size: 18px;
-        font-weight: 700;
-        color: #111827;
-        margin: 0;
+    .page-nav button {
+        border:none;
+        background: transparent;
+        color: #475569;
+        font-weight: 600;
+        padding: 10px 18px;
+        border-radius: 999px;
+        transition: all 0.2s ease;
     }
-    
-    .card-sub {
-        font-size: 13px;
-        color: #6b7280;
-        margin: 4px 0 0 0;
+    .page-nav button[data-selected="true"] {
+        background: #eff6ff;
+        color: #1d4ed8;
+        box-shadow: inset 0 -2px 0 0 #2563eb;
     }
-    
-    /* === INPUT === */
-    .input-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 8px;
+    .page-nav button:hover {background: #f8fafc;}
+
+    .card {
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:18px;
+        padding:24px 28px;
+        box-shadow:0 18px 40px rgba(15, 23, 42, 0.06);
     }
-    
-    .input-header .label {
-        font-weight: 700;
-        font-size: 16px;
-        color: #111827;
+    .card-title {font-size:22px; font-weight:800; color:#111827; margin:0;}
+    .card-sub {font-size:14px; color:#64748b; margin-top:8px; line-height:1.5;}
+
+    .result-head {
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:18px;
+        padding:24px 28px;
+        margin-bottom:18px;
     }
-    
-    .input-header .meta {
-        color: #6b7280;
-        font-size: 12px;
+    .result-kicker {font-size:11px; letter-spacing:1.5px; color:#64748b; font-weight:700;}
+    .result-cat {font-size:32px; font-weight:800; margin:10px 0 0 0; text-transform:uppercase; color:#111827;}
+    .conf-pill {
+        float:right; background:#2563eb; color:white; font-weight:700;
+        font-size:12px; padding:7px 14px; border-radius:999px;
     }
-    
-    .input-hint {
-        color: #6b7280;
-        font-size: 12px;
-        font-style: italic;
-        margin-top: 4px;
+
+    .stat-box {
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:16px;
+        padding:18px;
+        text-align:center;
     }
-    
+    .stat-num {font-size:28px; font-weight:800; color:#111827;}
+    .stat-lab {font-size:12px; color:#64748b; margin-top:4px;}
+
+    .bar-row {display:flex; align-items:center; margin:10px 0; font-size:13px;}
+    .bar-name {width:110px; color:#475569; text-transform:capitalize;}
+    .bar-track {flex:1; background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden; margin:0 12px;}
+    .bar-fill {height:100%; border-radius:6px;}
+    .bar-val {width:54px; text-align:right; font-weight:700; color:#0f172a;}
+
+    .ok-note {color:#16a34a; font-size:13px; font-weight:600;}
+    .warn-note {color:#d97706; font-size:13px; font-weight:600;}
+
+    .badge {
+        display:inline-block; padding:4px 12px; border-radius:999px;
+        font-size:11px; font-weight:700; color:white; text-transform:capitalize;
+    }
+
     .stTextArea textarea {
         background: #f9fafb !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 10px !important;
-        font-size: 14px !important;
-        min-height: 260px !important;
+        border: 1px solid #d1d5db !important;
         color: #111827 !important;
-        line-height: 1.6 !important;
+        min-height: 260px;
     }
-    
-    .stTextArea textarea:focus {
-        border-color: #2563eb !important;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
-    }
-    
-    /* === BUTTON === */
-    .stButton button {
-        border-radius: 10px !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        padding: 10px 20px !important;
-        border: none !important;
-    }
-    
-    .stButton button:not(:disabled) {
-        background: #1a365d !important;
-        color: white !important;
-    }
-    
-    .stButton button:not(:disabled):hover {
-        background: #2d4a7a !important;
-    }
-    
-    .stButton button:disabled {
-        background: #cbd5e1 !important;
-        color: #94a3b8 !important;
-    }
-    
-    /* === RESULTS === */
-    .result-header {
-        background: white;
-        border-radius: 14px;
-        padding: 18px 22px;
+    .stTextArea textarea::placeholder {color:#94a3b8 !important;}
+
+    .page-nav-card {
+        background: #ffffff;
         border: 1px solid #e5e7eb;
-        margin-bottom: 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        border-radius: 18px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
     }
-    
-    .result-kicker {
-        font-size: 10px;
-        font-weight: 700;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
+    .stRadio {
+        width: 100%;
     }
-    
-    .result-cat {
-        font-size: 28px;
-        font-weight: 800;
-        margin: 4px 0 0 0;
-        text-transform: uppercase;
-    }
-    
-    .conf-pill {
-        background: #2563eb;
-        color: white;
-        font-weight: 700;
-        font-size: 12px;
-        padding: 5px 14px;
-        border-radius: 999px;
-        white-space: nowrap;
-    }
-    
-    /* === STATS === */
-    .stat-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin: 12px 0 14px 0;
-    }
-    
-    .stat-box {
-        background: #f8fafc;
-        border: 1px solid #eef2f7;
-        border-radius: 12px;
-        padding: 14px 16px;
-        text-align: center;
-    }
-    
-    .stat-num {
-        font-size: 22px;
-        font-weight: 800;
-        color: #111827;
-    }
-    
-    .stat-lab {
-        font-size: 11px;
-        color: #6b7280;
-        margin-top: 2px;
-    }
-    
-    .status-ok {
-        color: #16a34a;
-        font-weight: 600;
-        font-size: 13px;
-        margin: 8px 0 4px 0;
-    }
-    
-    .status-warn {
-        color: #d97706;
-        font-weight: 600;
-        font-size: 13px;
-        margin: 8px 0 4px 0;
-    }
-    
-    /* === CONFIDENCE BARS === */
-    .conf-section {
-        margin-top: 12px;
-    }
-    
-    .conf-section .conf-label {
-        font-weight: 700;
-        color: #374151;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-    
-    .bar-row {
-        display: flex;
-        align-items: center;
-        margin: 8px 0;
-        font-size: 13px;
-    }
-    
-    .bar-row .bar-name {
-        width: 100px;
-        color: #374151;
-        font-weight: 500;
-        text-transform: capitalize;
-        flex-shrink: 0;
-    }
-    
-    .bar-row .bar-track {
-        flex: 1;
-        background: #f1f5f9;
-        border-radius: 6px;
-        height: 8px;
-        overflow: hidden;
-        margin: 0 12px;
-    }
-    
-    .bar-row .bar-fill {
-        height: 100%;
-        border-radius: 6px;
-        transition: width 0.3s ease;
-    }
-    
-    .bar-row .bar-val {
-        width: 54px;
-        text-align: right;
-        font-weight: 700;
-        color: #111827;
-        flex-shrink: 0;
-    }
-    
-    /* === BADGE === */
-    .badge {
-        display: inline-block;
-        padding: 3px 12px;
-        border-radius: 999px;
-        font-size: 11px;
-        font-weight: 700;
-        color: white;
-        text-transform: capitalize;
-    }
-    
-    /* === HISTORY STATS === */
-    .hist-stat {
-        background: #f8fafc;
-        border-radius: 10px;
-        padding: 12px 16px;
-        text-align: center;
-        border: 1px solid #eef2f7;
-    }
-    
-    .hist-stat .num {
-        font-size: 20px;
-        font-weight: 800;
-        color: #111827;
-    }
-    
-    .hist-stat .lab {
-        font-size: 11px;
-        color: #6b7280;
-        margin-top: 2px;
-    }
-    
-    /* === HISTORY ITEM === */
-    .history-item {
-        background: white;
-        border-radius: 12px;
-        padding: 14px 18px;
-        margin-bottom: 8px;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .history-item .preview {
-        margin-top: 8px;
-        color: #374151;
-        font-size: 14px;
-    }
-    
-    .history-item .meta {
-        float: right;
-        color: #6b7280;
-        font-size: 12px;
-    }
-    
-    /* === PLACEHOLDER === */
-    .placeholder {
-        text-align: center;
-        padding: 40px 20px;
-        color: #6b7280;
-    }
-    
-    .placeholder .icon {
-        font-size: 40px;
-        margin-bottom: 12px;
-    }
-    
-    .placeholder .headline {
-        font-size: 18px;
-        font-weight: 700;
-        color: #111827;
-    }
-    
-    .placeholder .desc {
-        font-size: 14px;
-        max-width: 440px;
-        margin: 8px auto 0 auto;
-        line-height: 1.6;
-    }
-    
-    .placeholder .features {
-        list-style: none;
-        padding: 0;
-        margin: 16px 0 0 0;
-        text-align: left;
-        max-width: 360px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    
-    .placeholder .features li {
-        padding: 6px 0;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
+    .stRadio > div {
         gap: 10px;
     }
-    
-    .placeholder .features li::before {
-        content: "✓";
-        color: #16a34a;
-        font-weight: 700;
-    }
-    
-    /* === SELECTBOX === */
-    .stSelectbox label {
-        font-weight: 600 !important;
-        font-size: 13px !important;
-        color: #111827 !important;
-    }
-    
-    .stSelectbox > div {
-        background: white !important;
-        border-radius: 10px !important;
+    .stRadio button {
+        background: #f8fafc !important;
+        color: #475569 !important;
         border: 1px solid #e5e7eb !important;
+        border-radius: 999px !important;
+        padding: 10px 18px !important;
+        font-weight: 700;
+        min-width: 140px;
     }
-    
-    /* === TABS HIDE LABEL === */
-    .stTabs label {
-        display: none !important;
+    .stRadio button[aria-checked="true"] {
+        background: #eff6ff !important;
+        color: #1d4ed8 !important;
+        border-color: #93c5fd !important;
+        box-shadow: inset 0 -2px 0 0 #2563eb;
     }
-    
-    .model-info {
-        font-size: 11px;
-        color: #6b7280;
-        margin-top: 6px;
-    }
+
+    .input-hint {color: #64748b; font-size:12px; margin-top:6px;}
+    .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#475569;}
+    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px;}
+    .feature-list li::before {content:'✓'; color:#16a34a; font-weight:700;}
+
+    div.stButton > button {border-radius:12px; font-weight:700; background: #2563eb; color:white; border:none;}
+    div.stButton > button:hover {background: #1e40af;}
+    div.stButton > button[disabled] {background: #93c5fd; color: #ffffff;}
+
+    .placeholder-card {text-align:center; color:#475569;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -496,6 +210,7 @@ st.markdown(CSS, unsafe_allow_html=True)
 # Session state
 # --------------------------------------------------------------------------- #
 def _init_state() -> None:
+    st.session_state.setdefault("page", "Classifier")
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("last_result", None)
     st.session_state.setdefault("input_text", "")
@@ -509,141 +224,97 @@ def _color(cat: str) -> str:
     return CATEGORY_COLORS.get(cat, DEFAULT_COLOR)
 
 
-def _read_pdf(uploaded) -> str:
-    try:
-        import pdfplumber
-    except ImportError:
-        st.error("PDF support needs `pdfplumber`. Install with: pip install pdfplumber")
-        return ""
-    try:
-        text_parts: list[str] = []
-        with pdfplumber.open(io.BytesIO(uploaded.read())) as pdf:
-            for page in pdf.pages:
-                text_parts.append(page.extract_text() or "")
-        return "\n".join(text_parts).strip()
-    except Exception as exc:
-        st.error(f"Could not read PDF: {exc}")
-        return ""
+def html_block(html: str) -> None:
+    """Render raw HTML, collapsing per-line indentation.
+
+    Indented multi-line strings are otherwise treated as markdown code blocks
+    and shown verbatim, so we strip leading whitespace from every line first.
+    """
+    cleaned = "".join(line.strip() for line in html.splitlines())
+    st.markdown(cleaned, unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #
-# Model selector
+# Header / navigation
 # --------------------------------------------------------------------------- #
-def model_selector() -> None:
-    models = available_models()
-    if not models:
-        st.error("No checkpoints found. Make sure the fine-tuned weights are included.")
-        return
-    if st.session_state.model_key not in models:
-        st.session_state.model_key = models[0]
-    default_idx = models.index(st.session_state.model_key)
-    choice = st.selectbox(
-        "Classification model",
-        models,
-        index=default_idx,
-        format_func=lambda k: (
-            f"{MODEL_INFO[k]['display']}  ·  "
-            f"Acc {MODEL_INFO[k]['accuracy']*100:.1f}% / F1 {MODEL_INFO[k]['macro_f1']*100:.1f}%"
-        ),
-        key="model_select",
+def render_header() -> None:
+    html_block(
+        """
+        <div class="app-header">
+          <div class="brand">
+            <div class="brand-logo">📰</div>
+            <div>
+              <div class="brand-title">Cambodian News Classifier</div>
+              <div class="brand-sub">Multi-class news article categorization</div>
+            </div>
+          </div>
+        </div>
+        """
     )
-    st.session_state.model_key = choice
 
 
 # --------------------------------------------------------------------------- #
-# Render confidence bars
+# Confidence bars
 # --------------------------------------------------------------------------- #
 def render_scores(scores: dict[str, float]) -> None:
     ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
-    html = ['<div class="conf-section"><div class="conf-label">📊 Confidence Scores</div>']
+    parts = [
+        '<div style="font-weight:700;color:#374151;margin:6px 0 4px;">'
+        "📊 Confidence Scores</div>"
+    ]
     for cat, prob in ordered:
         pct = prob * 100
         color = _color(cat)
-        html.append(
-            f"""
-            <div class="bar-row">
-                <div class="bar-name">{cat}</div>
-                <div class="bar-track">
-                    <div class="bar-fill" style="width:{pct:.1f}%;background:{color};"></div>
-                </div>
-                <div class="bar-val" style="color:{color};">{pct:.1f}%</div>
-            </div>
-            """
+        parts.append(
+            '<div class="bar-row">'
+            f'<div class="bar-name">{cat}</div>'
+            '<div class="bar-track">'
+            f'<div class="bar-fill" style="width:{pct:.1f}%;background:{color};"></div>'
+            "</div>"
+            f'<div class="bar-val" style="color:{color};">{pct:.1f}%</div>'
+            "</div>"
         )
-    html.append("</div>")
-    st.markdown("".join(html), unsafe_allow_html=True)
-
-
-# --------------------------------------------------------------------------- #
-# Render header
-# --------------------------------------------------------------------------- #
-def render_header() -> None:
-    st.markdown(
-        f"""
-        <div class="app-header">
-            <div class="brand">
-                <div class="brand-icon">📰</div>
-                <div>
-                    <div class="brand-title">Cambodian News Classifier</div>
-                    <div class="brand-sub">Multi-class news article categorization</div>
-                </div>
-            </div>
-            <div class="header-badge">AI Powered</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("".join(parts), unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #
 # Classifier page
 # --------------------------------------------------------------------------- #
 def page_classifier() -> None:
-    col1, col2 = st.columns([1, 1], gap="large")
+    left, right = st.columns([1, 1], gap="large")
 
-    with col1:
+    with left:
         text = st.session_state.input_text
         chars, words = len(text), len(text.split())
-
-        # Input card
-        st.markdown(
+        html_block(
             f"""
-            <div class="card">
-                <div class="input-header">
-                    <span class="label">📝 Input Section</span>
-                    <span class="meta">{chars:,} chars · {words:,} words</span>
-                </div>
-                <div style="font-size:13px;color:#6b7280;margin-bottom:12px;">
-                    Paste news text for classification
-                </div>
-            """,
-            unsafe_allow_html=True,
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+              <div>
+                <p class="card-title">Input Section</p>
+                <p class="card-sub">Paste or upload news text for category classification.</p>
+              </div>
+              <div style="color:#64748b;font-size:13px;">{chars:,} chars &nbsp;|&nbsp; {words:,} words</div>
+            </div>
+            """
         )
 
         model_selector()
 
-        # Tabs for input
-        tab_text, tab_pdf = st.tabs(["📄  Text Input", "⬆  PDF Upload"])
-
+        tab_text, tab_pdf = st.tabs(["Direct Text Entry", "PDF Upload"])
         with tab_text:
-            st.markdown(
-                """
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 6px 0;">
-                    <span style="font-weight:600;font-size:14px;color:#111827;">Direct Text Entry</span>
-                    <span class="input-hint" style="margin:0;">Perfect for copied articles or short texts</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
             text = st.text_area(
                 "Text input",
                 value=st.session_state.input_text,
-                height=280,
+                height=320,
                 label_visibility="collapsed",
-                placeholder="Paste your news article here...\n\nThe government announced new economic policies today...",
+                placeholder="Paste news text here (English). Perfect for copied articles or short texts.",
                 key="text_area_input",
             )
             st.session_state.input_text = text
+            st.markdown(
+                '<div class="input-hint">Perfect for copied articles or short texts.</div>',
+                unsafe_allow_html=True,
+            )
 
         with tab_pdf:
             pdf = st.file_uploader("Upload a PDF article", type=["pdf"])
@@ -653,17 +324,14 @@ def page_classifier() -> None:
                     st.session_state.input_text = extracted
                     text = extracted
                     st.success(f"Extracted {len(extracted.split()):,} words from PDF.")
-                    st.text_area("Extracted text", value=extracted, height=160)
-
-        st.markdown("</div>", unsafe_allow_html=True)
+                    st.text_area("Extracted text", value=extracted, height=180)
 
         words = len(text.split())
         analyze = st.button(
-            "🔍 Analyze Text",
+            "Analyze Text",
             use_container_width=True,
             disabled=words == 0,
         )
-
         if analyze:
             if words < MIN_WORDS:
                 st.warning(
@@ -686,84 +354,64 @@ def page_classifier() -> None:
             st.session_state.last_result = result
             st.session_state.history.insert(0, result)
 
-    with col2:
+    with right:
         result = st.session_state.last_result
-
         if result is None:
             st.markdown(
-                """
-                <div class="card placeholder">
-                    <div class="icon">📈</div>
-                    <div class="headline">Results Panel</div>
-                    <div class="desc">
-                        Enter a news article on the left and click <strong>"Analyze Text"</strong>
-                        to see classification results, confidence scores, and detailed analytics.
-                    </div>
-                    <ul class="features">
-                        <li>Supports news text input</li>
-                        <li>5-category classification model</li>
-                        <li>Confidence scores for all categories</li>
-                    </ul>
-                </div>
-                """,
+                '<div class="card placeholder-card">'
+                "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
+                "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
+                "<div style=\"margin-top:12px;color:#64748b;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
+                "<ul class=\"feature-list\">"
+                "<li>Supports news text input</li>"
+                "<li>6-category classification model</li>"
+                "<li>Confidence scores for all categories</li>"
+                "</ul>"
+                "</div>",
                 unsafe_allow_html=True,
             )
             return
 
         cat = result["category"]
         conf = result["confidence"] * 100
-        color = _color(cat)
-
-        # Result header
-        st.markdown(
+        html_block(
             f"""
-            <div class="result-header">
-                <div>
-                    <div class="result-kicker">🏆 Top Classification</div>
-                    <div class="result-cat" style="color:{color};">{cat}</div>
-                </div>
-                <div class="conf-pill">{conf:.1f}% confidence</div>
+            <div class="result-head">
+              <span class="conf-pill">{conf:.1f}% confidence</span>
+              <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
+              <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
             </div>
-            """,
+            """
+        )
+
+        c1, c2 = st.columns(2)
+        c1.markdown(
+            f'<div class="stat-box"><div class="stat-num">{result["chars"]:,}</div>'
+            '<div class="stat-lab">Characters</div></div>',
+            unsafe_allow_html=True,
+        )
+        c2.markdown(
+            f'<div class="stat-box"><div class="stat-num">{result["words"]:,}</div>'
+            '<div class="stat-lab">Words</div></div>',
             unsafe_allow_html=True,
         )
 
-        # Stats
-        st.markdown(
-            f"""
-            <div class="stat-grid">
-                <div class="stat-box">
-                    <div class="stat-num">{result["chars"]:,}</div>
-                    <div class="stat-lab">Characters</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-num">{result["words"]:,}</div>
-                    <div class="stat-lab">Words</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Status
         if result["words"] >= MIN_WORDS:
             st.markdown(
-                '<p class="status-ok">✅ Text length is optimal for classification</p>',
+                '<p class="ok-note">✓ Text length is optimal for classification</p>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<p class="status-warn">⚠️ Short text — prediction may be less reliable</p>',
+                '<p class="warn-note">⚠ Short text — prediction may be less reliable</p>',
                 unsafe_allow_html=True,
             )
 
-        # Confidence scores
         render_scores(result["scores"])
-        st.markdown(f'<p class="model-info">🤖 Model: {result["model"]}</p>', unsafe_allow_html=True)
+        st.caption(f"Model: {result['model']}")
 
-        # Actions
-        c1, c2 = st.columns(2)
-        with c1:
+        e1, e2 = st.columns(2)
+        with e1:
             st.download_button(
                 "⬇ Export",
                 data=json.dumps(result, indent=2),
@@ -771,62 +419,58 @@ def page_classifier() -> None:
                 mime="application/json",
                 use_container_width=True,
             )
-        with c2:
+        with e2:
             if st.button("🗑 Clear", use_container_width=True):
                 st.session_state.last_result = None
                 st.session_state.input_text = ""
                 st.rerun()
 
 
+def _read_pdf(uploaded) -> str:
+    try:
+        import pdfplumber
+    except ImportError:
+        st.error("PDF support needs `pdfplumber`. Install it with: pip install pdfplumber")
+        return ""
+    try:
+        text_parts: list[str] = []
+        with pdfplumber.open(io.BytesIO(uploaded.read())) as pdf:
+            for page in pdf.pages:
+                text_parts.append(page.extract_text() or "")
+        return "\n".join(text_parts).strip()
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"Could not read PDF: {exc}")
+        return ""
+
+
 # --------------------------------------------------------------------------- #
-# History page
+# Session history page
 # --------------------------------------------------------------------------- #
 def page_history() -> None:
     history = st.session_state.history
-
+    st.markdown('<p class="card-title">Session History</p>', unsafe_allow_html=True)
     st.markdown(
-        """
-        <div class="card">
-            <div class="card-title">📋 Session History</div>
-            <div class="card-sub">All classification results from this session</div>
-        """,
+        '<p class="card-sub">Classifications from this browser session (resets on refresh).</p>',
         unsafe_allow_html=True,
     )
 
     if not history:
         st.info("No classifications yet. Analyze an article to populate the history.")
-        st.markdown("</div>", unsafe_allow_html=True)
         return
 
     confidences = [h["confidence"] for h in history]
     cats = [h["category"] for h in history]
     top_cat = max(set(cats), key=cats.count)
-
-    # Stats row
-    c1, c2, c3, c4 = st.columns(4)
-    c1.markdown(
-        f'<div class="hist-stat"><div class="num">{len(history)}</div><div class="lab">Total Articles</div></div>',
-        unsafe_allow_html=True,
-    )
-    c2.markdown(
-        f'<div class="hist-stat"><div class="num">{len(set(cats))}/5</div><div class="lab">Categories Used</div></div>',
-        unsafe_allow_html=True,
-    )
-    c3.markdown(
-        f'<div class="hist-stat"><div class="num">{(sum(confidences) / len(confidences)) * 100:.1f}%</div><div class="lab">Avg Confidence</div></div>',
-        unsafe_allow_html=True,
-    )
-    c4.markdown(
-        f'<div class="hist-stat"><div class="num">{top_cat.capitalize()}</div><div class="lab">Top Category</div></div>',
-        unsafe_allow_html=True,
-    )
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Articles", len(history))
+    m2.metric("Categories used", len(set(cats)))
+    m3.metric("Avg confidence", f"{(sum(confidences) / len(confidences)) * 100:.1f}%")
+    m4.metric("Top category", top_cat.capitalize())
 
     st.markdown("---")
-
-    # Filters
     f1, f2 = st.columns([3, 1])
-    query = f1.text_input("🔍 Search articles...", placeholder="Filter by preview text…", label_visibility="collapsed")
-    cat_filter = f2.selectbox("Category", ["All"] + sorted(set(cats)), label_visibility="collapsed")
+    query = f1.text_input("Search text", placeholder="Filter by preview text…")
+    cat_filter = f2.selectbox("Category", ["All"] + sorted(set(cats)))
 
     rows = []
     for h in history:
@@ -836,36 +480,35 @@ def page_history() -> None:
             continue
         rows.append(h)
 
-    st.markdown(f"### {len(rows)} article{'s' if len(rows) != 1 else ''}")
-
     for h in rows:
         color = _color(h["category"])
-        st.markdown(
+        html_block(
             f"""
-            <div class="history-item">
-                <span class="badge" style="background:{color};">{h['category']}</span>
-                <span class="meta">{h['confidence']*100:.1f}% · {h['model']} · {h['timestamp']}</span>
-                <div class="preview">{h['preview']}…</div>
+            <div class="card" style="margin-bottom:10px;padding:14px 18px;">
+              <span class="badge" style="background:{color};">{h['category']}</span>
+              <span style="float:right;color:#6b7280;font-size:12px;">
+                {h['confidence']*100:.1f}% &middot; {h['model']} &middot; {h['timestamp']}
+              </span>
+              <div style="margin-top:8px;color:#374151;font-size:14px;">{h['preview']}&hellip;</div>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
     st.markdown("---")
-
-    df = pd.DataFrame([
-        {
-            "timestamp": h["timestamp"],
-            "model": h["model"],
-            "category": h["category"],
-            "confidence": round(h["confidence"], 4),
-            "words": h["words"],
-            "chars": h["chars"],
-            "preview": h["preview"],
-        }
-        for h in history
-    ])
-
+    df = pd.DataFrame(
+        [
+            {
+                "timestamp": h["timestamp"],
+                "model": h["model"],
+                "category": h["category"],
+                "confidence": round(h["confidence"], 4),
+                "words": h["words"],
+                "chars": h["chars"],
+                "preview": h["preview"],
+            }
+            for h in history
+        ]
+    )
     c1, c2 = st.columns(2)
     with c1:
         st.download_button(
@@ -880,114 +523,140 @@ def page_history() -> None:
             st.session_state.history = []
             st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
 
 # --------------------------------------------------------------------------- #
 # About page
 # --------------------------------------------------------------------------- #
 def page_about() -> None:
     labels = get_labels()
-
-    st.markdown(
-        """
-        <div class="card">
-            <div class="card-title">ℹ️ About</div>
-            <div class="card-sub">Cambodian News Classifier — Thesis Project</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    st.markdown('<p class="card-title">About</p>', unsafe_allow_html=True)
     st.markdown(
         """
         This dashboard classifies English-language Cambodian news articles into one of
-        **five categories** using transformer encoders fine-tuned on a custom corpus
-        scraped from Cambodian news outlets. It is the deployment deliverable (Part 3)
-        of the thesis project.
+        five categories using transformer encoders fine-tuned on a custom corpus scraped
+        from Cambodian news outlets. It is the deployment deliverable (Part 3) of the
+        thesis project.
         """
     )
 
-    st.subheader("📂 Categories")
+    st.subheader("Categories")
     st.write(", ".join(c.capitalize() for c in labels))
     st.caption(
         "This is the *no-environment* variant — the Environment class was excluded "
-        "from the corpus, leaving five balanced categories."
+        "from the corpus, leaving five balanced-enough categories."
     )
 
-    st.subheader("📊 Model Card — Test-Set Performance")
+    st.subheader("Model card — test-set performance")
     rank = pd.DataFrame(
         [
             {
                 "Model": info["display"],
                 "Accuracy": f"{info['accuracy']*100:.2f}%",
                 "Macro F1": f"{info['macro_f1']*100:.2f}%",
-                "Available": "✅" if key in available_models() else "❌",
+                "Available": "✓" if key in available_models() else "✗",
             }
             for key, info in MODEL_INFO.items()
         ]
     )
-    st.dataframe(rank, hide_index=True, use_container_width=True)
-
+    st.table(rank)
     st.success(
-        "**🏆 RoBERTa** is the recommended default — best accuracy (91.75%) and best "
+        "**RoBERTa** is the recommended default — best accuracy (91.75%) and best "
         "macro-F1 (91.77%) on this balanced dataset."
     )
 
-    st.subheader("🔧 Pipeline")
+    st.subheader("Pipeline")
     st.markdown(
         """
-        1. **Preprocess** — lowercase, strip HTML / URLs / emails / digits, drop stop-words
-        2. **Tokenize** — model-specific HuggingFace tokenizer, `max_length=512`
-        3. **Classify** — `TransformerClassifier` ([CLS] → 512 → LogSoftmax over 5 classes)
-        4. **Report** — `exp()` of log-probabilities gives the confidence scores shown
+        1. **Preprocess** — lowercase, strip HTML / URLs / emails / digits, drop
+           stop-words (identical to training, via `preprocessing.clean.preprocess`).
+        2. **Tokenize** — model-specific HuggingFace tokenizer, `max_length=512`,
+           body text only.
+        3. **Classify** — `TransformerClassifier` ([CLS] → 512 → LogSoftmax over 5 classes).
+        4. **Report** — `exp()` of log-probabilities gives the confidence scores shown.
         """
     )
 
-    st.subheader("⚠️ Known Limitations")
+    st.subheader("Known limitations")
     st.markdown(
         """
-        - Trained only on Cambodian English-language outlets; may underperform on other regions
-        - English only — Khmer-language text is out of scope
-        - History is per-session and clears on browser refresh
+        - Trained only on a handful of Cambodian English-language outlets; may
+          underperform on other regions or styles.
+        - English only — Khmer-language or heavily code-switched text is out of scope.
+        - History is per-session and clears on browser refresh.
         """
     )
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #
-# Main
+# Model selector (on-page) + sidebar + routing
 # --------------------------------------------------------------------------- #
-def render_header() -> None:
-    st.markdown(
-        """
-        <div class="app-header">
-            <div class="brand">
-                <div class="brand-icon">📰</div>
-                <div>
-                    <div class="brand-title">Cambodian News Classifier</div>
-                    <div class="brand-sub">Multi-class news article categorization</div>
-                </div>
-            </div>
-            <div class="header-badge">AI Powered</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+def model_selector() -> None:
+    """On-page transformer picker bound to ``st.session_state.model_key``."""
+    models = available_models()
+    if not models:
+        st.error(
+            "No checkpoints found in models/undersampling_no_environment/. "
+            "Make sure the fine-tuned .pt weights are included in your deployment "
+            "or tracked with Git LFS."
+        )
+        return
+    if st.session_state.model_key not in models:
+        st.session_state.model_key = models[0]
+    default_idx = models.index(st.session_state.model_key)
+    choice = st.selectbox(
+        "🤖 Classification model",
+        models,
+        index=default_idx,
+        format_func=lambda k: (
+            f"{MODEL_INFO[k]['display']}  ·  "
+            f"Acc {MODEL_INFO[k]['accuracy']*100:.1f}% / F1 {MODEL_INFO[k]['macro_f1']*100:.1f}%"
+        ),
+        key="model_select",
+        help="Pick which fine-tuned encoder runs the classification. "
+        "RoBERTa is the best performer.",
     )
+    st.session_state.model_key = choice
+
+
+def render_sidebar() -> None:
+    with st.sidebar:
+        st.header("⚙️ Settings")
+        current = st.session_state.model_key
+        if current in MODEL_INFO:
+            st.markdown(f"**Active model:** {MODEL_INFO[current]['display']}")
+            st.caption(
+                f"Accuracy {MODEL_INFO[current]['accuracy']*100:.2f}% · "
+                f"Macro-F1 {MODEL_INFO[current]['macro_f1']*100:.2f}% (test set)"
+            )
+        st.caption("Switch models from the dropdown on the Classifier page.")
+        st.divider()
+        st.caption("Corpus: undersampling_no_environment · 5 classes · max_length 512")
 
 
 def main() -> None:
     render_header()
-
-    tab1, tab2, tab3 = st.tabs(["Classifier", "Session History", "About"])
-
-    with tab1:
+    html_block(
+        """
+        <div class="page-nav-card">
+        """
+    )
+    st.radio(
+        "",
+        ["Classifier", "Session History", "About"],
+        index=["Classifier", "Session History", "About"].index(st.session_state.page),
+        key="page",
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    html_block("</div>")
+    render_sidebar()
+    page = st.session_state.page
+    if page == "Classifier":
         page_classifier()
-    with tab2:
+    elif page == "Session History":
         page_history()
-    with tab3:
+    else:
         page_about()
 
 
-if __name__ == "__main__":
-    main()
+main()
