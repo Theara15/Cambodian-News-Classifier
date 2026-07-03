@@ -18,6 +18,7 @@ dist/
 # PyTorch checkpoints
 *.pt
 *.pth
+!models/undersampling_no_environment/*.pt
 
 # Streamlit
 .streamlit/

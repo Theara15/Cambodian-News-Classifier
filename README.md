@@ -19,4 +19,5 @@ python -m streamlit run streamlit_app.py
 ## Notes
 
 - Model checkpoints are located in `models/undersampling_no_environment/`.
+- These checkpoint files are large and should be tracked with Git LFS for deployment.
 - The server app is in `server.py` for alternate deployment with Uvicorn.

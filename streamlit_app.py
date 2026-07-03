@@ -2,11 +2,11 @@
 
 Run from the project root:
 
-    streamlit run app/streamlit_app.py
+    streamlit run streamlit_app.py
 
-Serves the four fine-tuned ``full_no_environment`` encoders (BERT, DistilBERT,
-RoBERTa, ELECTRA) behind a single classifier UI with session history and an
-about/model-card page.
+Serves the four fine-tuned ``undersampling_no_environment`` encoders (BERT,
+DistilBERT, RoBERTa, ELECTRA) behind a single classifier UI with session
+history and an about/model-card page.
 """
 
 from __future__ import annotations
@@ -507,7 +507,11 @@ def model_selector() -> None:
     """On-page transformer picker bound to ``st.session_state.model_key``."""
     models = available_models()
     if not models:
-        st.error("No checkpoints found in models/checkpoints/full_no_environment/")
+        st.error(
+            "No checkpoints found in models/undersampling_no_environment/. "
+            "Make sure the fine-tuned .pt weights are included in your deployment "
+            "or tracked with Git LFS."
+        )
         return
     if st.session_state.model_key not in models:
         st.session_state.model_key = models[0]
@@ -539,7 +543,7 @@ def render_sidebar() -> None:
             )
         st.caption("Switch models from the dropdown on the Classifier page.")
         st.divider()
-        st.caption("Corpus: full_no_environment · 5 classes · max_length 512")
+        st.caption("Corpus: undersampling_no_environment · 5 classes · max_length 512")
 
 
 def main() -> None:
