@@ -211,6 +211,15 @@ CSS = """
         color: #111827 !important;
     }
     
+    /* Make file uploader button text white */
+    .stFileUploader button {
+        color: white !important;
+        background: #2563eb !important;
+    }
+    .stFileUploader button:hover {
+        background: #1e40af !important;
+    }
+    
     /* Style for success messages */
     .stAlert {
         color: #111827 !important;
@@ -283,6 +292,30 @@ CSS = """
     }
     .stDownloadButton button:hover {
         background: #1e40af !important;
+    }
+    
+    /* Style for table in About page */
+    .stTable {
+        color: #111827 !important;
+    }
+    .stTable td, .stTable th {
+        color: #111827 !important;
+    }
+    .stTable thead tr th {
+        color: #111827 !important;
+        background: #f8fafc !important;
+        font-weight: 700 !important;
+    }
+    .stTable tbody tr td {
+        color: #111827 !important;
+    }
+    
+    /* Style for dataframe */
+    .stDataFrame {
+        color: #111827 !important;
+    }
+    .stDataFrame td, .stDataFrame th {
+        color: #111827 !important;
     }
 </style>
 """
@@ -648,7 +681,8 @@ def page_about() -> None:
             for key, info in MODEL_INFO.items()
         ]
     )
-    st.table(rank)
+    # Use dataframe instead of table for better visibility
+    st.dataframe(rank, hide_index=True, use_container_width=True)
     st.success(
         "**RoBERTa** is the recommended default — best accuracy (91.75%) and best "
         "macro-F1 (91.77%) on this balanced dataset."
