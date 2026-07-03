@@ -52,69 +52,155 @@ CSS = """
 <style>
     /* hide default chrome */
     #MainMenu, footer, header[data-testid="stHeader"] {visibility: hidden;}
-    body, .stApp, .main, .block-container {background-color: #0f172a !important; color: #f8fafc !important;}
-    .block-container {padding-top: 1rem; padding-bottom: 2rem; max-width: 1180px;}
-
+    body, .stApp, .main {background: #f8f9fb !important; color: #111827 !important;}
+    .block-container {
+        background: #ffffff !important;
+        padding-top: 1rem;
+        padding-bottom: 2rem;
+        border-radius: 24px;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+        max-width: 1180px;
+    }
     .app-header {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border-radius: 14px;
-        padding: 18px 26px;
+        background: #1e3a8a;
+        border-radius: 18px;
+        padding: 20px 28px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 22px;
+        margin-bottom: 24px;
+        color: white;
+        box-shadow: 0 16px 40px rgba(30, 58, 138, 0.16);
     }
     .brand {display: flex; align-items: center; gap: 14px;}
     .brand-logo {
-        width: 42px; height: 42px; border-radius: 11px;
-        background: linear-gradient(135deg,#6366f1,#06b6d4);
+        width: 46px; height: 46px; border-radius: 14px;
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
         display:flex; align-items:center; justify-content:center;
-        font-size: 20px; color:white; font-weight:700;
+        font-size: 22px; color:white; font-weight:800;
     }
-    .brand-title {color:#f8fafc; font-size:20px; font-weight:700; line-height:1.1;}
-    .brand-sub {color:#94a3b8; font-size:11px; letter-spacing:2px; font-weight:600;}
+    .brand-title {color:white; font-size:22px; font-weight:800; line-height:1.05;}
+    .brand-sub {color:rgba(255,255,255,0.8); font-size:11px; letter-spacing:1.5px; font-weight:600;}
+
+    .page-nav {
+        display:flex; gap: 12px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 12px;
+        margin-bottom: 24px;
+    }
+    .page-nav button {
+        border:none;
+        background: transparent;
+        color: #475569;
+        font-weight: 600;
+        padding: 10px 18px;
+        border-radius: 999px;
+        transition: all 0.2s ease;
+    }
+    .page-nav button[data-selected="true"] {
+        background: #eff6ff;
+        color: #1d4ed8;
+        box-shadow: inset 0 -2px 0 0 #2563eb;
+    }
+    .page-nav button:hover {background: #f8fafc;}
 
     .card {
-        background:#ffffff; border:1px solid #e5e7eb; border-radius:14px;
-        padding:22px 24px; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:18px;
+        padding:24px 28px;
+        box-shadow:0 18px 40px rgba(15, 23, 42, 0.06);
     }
-    .card-title {font-size:20px; font-weight:700; color:#111827; margin:0;}
-    .card-sub {font-size:13px; color:#6b7280; margin-top:2px;}
+    .card-title {font-size:22px; font-weight:800; color:#111827; margin:0;}
+    .card-sub {font-size:14px; color:#64748b; margin-top:8px; line-height:1.5;}
 
     .result-head {
-        background:linear-gradient(135deg,#f5f3ff,#faf5ff);
-        border:1px solid #ede9fe; border-radius:14px; padding:20px 24px;
-        margin-bottom:16px;
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:18px;
+        padding:24px 28px;
+        margin-bottom:18px;
     }
-    .result-kicker {font-size:11px; letter-spacing:1.5px; color:#6b7280; font-weight:700;}
-    .result-cat {font-size:34px; font-weight:800; margin:2px 0 0 0; text-transform:uppercase;}
+    .result-kicker {font-size:11px; letter-spacing:1.5px; color:#64748b; font-weight:700;}
+    .result-cat {font-size:32px; font-weight:800; margin:10px 0 0 0; text-transform:uppercase; color:#111827;}
     .conf-pill {
-        float:right; background:#ede9fe; color:#6d28d9; font-weight:700;
-        font-size:12px; padding:5px 12px; border-radius:999px;
+        float:right; background:#2563eb; color:white; font-weight:700;
+        font-size:12px; padding:7px 14px; border-radius:999px;
     }
 
     .stat-box {
-        background:#f8fafc; border:1px solid #eef2f7; border-radius:12px;
-        padding:14px; text-align:center;
+        background:#ffffff;
+        border:1px solid #e5e7eb;
+        border-radius:16px;
+        padding:18px;
+        text-align:center;
     }
-    .stat-num {font-size:26px; font-weight:800; color:#111827;}
-    .stat-lab {font-size:12px; color:#6b7280; margin-top:2px;}
+    .stat-num {font-size:28px; font-weight:800; color:#111827;}
+    .stat-lab {font-size:12px; color:#64748b; margin-top:4px;}
 
-    .bar-row {display:flex; align-items:center; margin:9px 0; font-size:13px;}
-    .bar-name {width:110px; color:#374151; text-transform:capitalize;}
-    .bar-track {flex:1; background:#eef2f7; border-radius:6px; height:9px; overflow:hidden; margin:0 12px;}
+    .bar-row {display:flex; align-items:center; margin:10px 0; font-size:13px;}
+    .bar-name {width:110px; color:#475569; text-transform:capitalize;}
+    .bar-track {flex:1; background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden; margin:0 12px;}
     .bar-fill {height:100%; border-radius:6px;}
-    .bar-val {width:54px; text-align:right; font-weight:700;}
+    .bar-val {width:54px; text-align:right; font-weight:700; color:#0f172a;}
 
-    .ok-note {color:#059669; font-size:13px; font-weight:600;}
+    .ok-note {color:#16a34a; font-size:13px; font-weight:600;}
     .warn-note {color:#d97706; font-size:13px; font-weight:600;}
 
     .badge {
-        display:inline-block; padding:3px 10px; border-radius:999px;
+        display:inline-block; padding:4px 12px; border-radius:999px;
         font-size:11px; font-weight:700; color:white; text-transform:capitalize;
     }
 
-    div.stButton > button {border-radius:10px; font-weight:600;}
+    .stTextArea textarea {
+        background: #f9fafb !important;
+        border: 1px solid #d1d5db !important;
+        color: #111827 !important;
+        min-height: 260px;
+    }
+    .stTextArea textarea::placeholder {color:#94a3b8 !important;}
+
+    .page-nav-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+    }
+    .stRadio {
+        width: 100%;
+    }
+    .stRadio > div {
+        gap: 10px;
+    }
+    .stRadio button {
+        background: #f8fafc !important;
+        color: #475569 !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 999px !important;
+        padding: 10px 18px !important;
+        font-weight: 700;
+        min-width: 140px;
+    }
+    .stRadio button[aria-checked="true"] {
+        background: #eff6ff !important;
+        color: #1d4ed8 !important;
+        border-color: #93c5fd !important;
+        box-shadow: inset 0 -2px 0 0 #2563eb;
+    }
+
+    .input-hint {color: #64748b; font-size:12px; margin-top:6px;}
+    .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#475569;}
+    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px;}
+    .feature-list li::before {content:'✓'; color:#16a34a; font-weight:700;}
+
+    div.stButton > button {border-radius:12px; font-weight:700; background: #2563eb; color:white; border:none;}
+    div.stButton > button:hover {background: #1e40af;}
+    div.stButton > button[disabled] {background: #93c5fd; color: #ffffff;}
+
+    .placeholder-card {text-align:center; color:#475569;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -159,20 +245,12 @@ def render_header() -> None:
             <div class="brand-logo">📰</div>
             <div>
               <div class="brand-title">Cambodian News Classifier</div>
-              <div class="brand-sub">MULTI-CLASS AI ANALYSIS</div>
+              <div class="brand-sub">Multi-class news article categorization</div>
             </div>
           </div>
         </div>
         """
     )
-    nav = st.columns([1, 1, 1, 4])
-    pages = ["Classifier", "Session History", "About"]
-    for col, name in zip(nav, pages):
-        with col:
-            kind = "primary" if st.session_state.page == name else "secondary"
-            if st.button(name, key=f"nav_{name}", use_container_width=True, type=kind):
-                st.session_state.page = name
-                st.rerun()
 
 
 # --------------------------------------------------------------------------- #
@@ -210,12 +288,12 @@ def page_classifier() -> None:
         chars, words = len(text), len(text.split())
         html_block(
             f"""
-            <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;">
               <div>
                 <p class="card-title">Input Section</p>
-                <p class="card-sub">Paste news text for classification</p>
+                <p class="card-sub">Paste or upload news text for category classification.</p>
               </div>
-              <div style="color:#6b7280;font-size:13px;">{chars:,} chars &nbsp;|&nbsp; {words:,} words</div>
+              <div style="color:#64748b;font-size:13px;">{chars:,} chars &nbsp;|&nbsp; {words:,} words</div>
             </div>
             """
         )
@@ -225,15 +303,18 @@ def page_classifier() -> None:
         tab_text, tab_pdf = st.tabs(["Direct Text Entry", "PDF Upload"])
         with tab_text:
             text = st.text_area(
-                "Article body",
+                "Text input",
                 value=st.session_state.input_text,
                 height=320,
                 label_visibility="collapsed",
-                placeholder="Paste the news article body here (English). "
-                "At least 50 words is recommended for a reliable classification.",
+                placeholder="Paste news text here (English). Perfect for copied articles or short texts.",
                 key="text_area_input",
             )
             st.session_state.input_text = text
+            st.markdown(
+                '<div class="input-hint">Perfect for copied articles or short texts.</div>',
+                unsafe_allow_html=True,
+            )
 
         with tab_pdf:
             pdf = st.file_uploader("Upload a PDF article", type=["pdf"])
@@ -247,8 +328,7 @@ def page_classifier() -> None:
 
         words = len(text.split())
         analyze = st.button(
-            "✨ Analyze Text",
-            type="primary",
+            "Analyze Text",
             use_container_width=True,
             disabled=words == 0,
         )
@@ -278,9 +358,16 @@ def page_classifier() -> None:
         result = st.session_state.last_result
         if result is None:
             st.markdown(
-                '<div class="card" style="text-align:center;color:#9ca3af;padding:60px 24px;">'
-                "🔎<br><br>Enter article text and click <b>Analyze Text</b> to see the "
-                "predicted category and confidence scores.</div>",
+                '<div class="card placeholder-card">'
+                "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
+                "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
+                "<div style=\"margin-top:12px;color:#64748b;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
+                "<ul class=\"feature-list\">"
+                "<li>Supports news text input</li>"
+                "<li>6-category classification model</li>"
+                "<li>Confidence scores for all categories</li>"
+                "</ul>"
+                "</div>",
                 unsafe_allow_html=True,
             )
             return
@@ -548,6 +635,20 @@ def render_sidebar() -> None:
 
 def main() -> None:
     render_header()
+    html_block(
+        """
+        <div class="page-nav-card">
+        """
+    )
+    st.radio(
+        "",
+        ["Classifier", "Session History", "About"],
+        index=["Classifier", "Session History", "About"].index(st.session_state.page),
+        key="page",
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    html_block("</div>")
     render_sidebar()
     page = st.session_state.page
     if page == "Classifier":
