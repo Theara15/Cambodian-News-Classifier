@@ -51,20 +51,21 @@ MIN_WORDS = 50
 FONTS = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 """
 st.markdown(FONTS, unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------- #
-# Design tokens — "Wire Desk": an editorial sorting-desk aesthetic. This is a
-# tool for triaging news copy, so it borrows from the newsroom (stamped
-# classifications, wire-service mono data, serif mastheads) instead of a
-# generic SaaS dashboard look.
-#   Ink navy   #14213D  – header, primary text, primary button
-#   Newsprint  #FAF8F2  – page background (warm, not stark white)
-#   Stamp red  #B3261E  – the one accent: the classification result only
-#   Slate      #5B6472  – secondary/meta text
-#   Rule       #DCD5C6  – hairlines, borders (warm grey, not cool #e5e7eb)
+# Design tokens — clean SaaS dashboard: navy header, white cards on a soft
+# grey page, plain Inter throughout, muted secondary text, a single blue
+# accent for active/interactive states.
+#   Navy     #1e3a8a  – header background
+#   Page bg  #f5f6fa  – page background
+#   Card bg  #ffffff  – cards
+#   Border   #e5e7eb  – hairlines
+#   Ink      #111827  – primary text
+#   Muted    #6b7280  – secondary/meta text
+#   Accent   #2563eb  – active states, links, focus rings
 # --------------------------------------------------------------------------- #
 CSS = """
 <style>
@@ -72,207 +73,181 @@ CSS = """
     #MainMenu, footer, header[data-testid="stHeader"] {visibility: hidden;}
 
     html, body, .stApp, .main {
-        background:
-            radial-gradient(rgba(20,33,61,0.035) 1px, transparent 1px) 0 0/14px 14px,
-            #FAF8F2 !important;
-        color: #14213D !important;
-        font-family: 'IBM Plex Sans', -apple-system, sans-serif !important;
+        background: #f5f6fa !important;
+        color: #111827 !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
 
     .block-container {
         background: transparent !important;
-        padding-top: 1.5rem;
+        padding-top: 1.25rem;
         padding-bottom: 2rem;
         max-width: 1180px;
     }
 
-    /* --------------------------- Masthead --------------------------- */
+    /* --------------------------- Header --------------------------- */
     .app-header {
-        background: #14213D;
-        background-image: linear-gradient(180deg, #182849 0%, #101a30 100%);
-        border-radius: 4px;
-        padding: 26px 30px;
+        background: #1e3a8a;
+        border-radius: 14px;
+        padding: 18px 26px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
+        margin-bottom: 22px;
         color: white;
-        border-bottom: 3px solid #B3261E;
     }
-    .brand {display: flex; align-items: center; gap: 16px;}
+    .brand {display: flex; align-items: center; gap: 14px;}
     .brand-logo {
-        width: 46px; height: 46px; border-radius: 4px;
-        background: #B3261E;
+        width: 42px; height: 42px; border-radius: 11px;
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
         display:flex; align-items:center; justify-content:center;
-        font-size: 22px; color:white;
+        font-size: 20px; color:white;
     }
-    .brand-title {
-        color:white; font-family:'Fraunces', serif; font-size:25px;
-        font-weight:600; line-height:1.05; letter-spacing:0.2px;
-    }
+    .brand-title {color:white; font-size:19px; font-weight:700; line-height:1.1;}
     .brand-sub {
-        color:#9AA5C4; font-family:'IBM Plex Mono', monospace; font-size:10.5px;
-        letter-spacing:2.5px; font-weight:500; margin-top:5px; text-transform:uppercase;
+        color:rgba(255,255,255,0.75); font-size:10.5px;
+        letter-spacing:1.8px; font-weight:600; margin-top:3px; text-transform:uppercase;
     }
 
-    /* --------------------------- Nav / tabs --------------------------- */
+    /* --------------------------- Page nav (radio) --------------------------- */
     .page-nav-card {
         background: transparent;
-        padding: 0 2px;
+        padding: 0;
         margin-bottom: 22px;
-        border-bottom: 1px solid #DCD5C6;
     }
     .stRadio { width: 100%; }
-    .stRadio > div { gap: 4px; }
+    .stRadio > div { gap: 8px; }
     .stRadio button {
         background: transparent !important;
         border: none !important;
-        border-radius: 0 !important;
-        padding: 10px 6px !important;
-        margin-right: 22px !important;
-        font-family: 'IBM Plex Mono', monospace !important;
-        font-size: 12.5px !important;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+        border-radius: 8px !important;
+        padding: 8px 14px !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 13.5px !important;
         font-weight: 600;
-        box-shadow: inset 0 -2px 0 0 transparent !important;
+        color: #475569 !important;
     }
     .stRadio button[aria-checked="true"] {
-        box-shadow: inset 0 -2px 0 0 #B3261E !important;
+        background: #eef2ff !important;
+        color: #1e3a8a !important;
     }
 
     /* --------------------------- Cards --------------------------- */
     .card {
         background:#ffffff;
-        border:1px solid #DCD5C6;
-        border-radius:4px;
-        padding:26px 28px;
-        box-shadow: 3px 3px 0 rgba(20,33,61,0.04);
+        border:1px solid #e5e7eb;
+        border-radius:14px;
+        padding:24px 26px;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.04);
     }
-    .card-title {
-        font-family:'Fraunces', serif; font-size:23px; font-weight:600;
-        color:#14213D; margin:0;
-    }
-    .card-sub {font-size:13.5px; color:#5B6472; margin-top:6px; line-height:1.5;}
+    .card-title {font-size:19px; font-weight:700; color:#111827; margin:0;}
+    .card-sub {font-size:13px; color:#6b7280; margin-top:4px; line-height:1.5;}
 
-    /* --------------------------- Result: the stamp --------------------------- */
+    /* --------------------------- Result --------------------------- */
     .result-head {
         background:#ffffff;
-        border:1px solid #DCD5C6;
-        border-radius:4px;
-        padding:26px 28px;
+        border:1px solid #e5e7eb;
+        border-radius:14px;
+        padding:22px 26px;
         margin-bottom:18px;
-        position: relative;
-        overflow: hidden;
     }
-    .result-kicker {
-        font-family:'IBM Plex Mono', monospace; font-size:10.5px;
-        letter-spacing:2px; color:#5B6472; font-weight:600; text-transform:uppercase;
-    }
-    .stamp-wrap { margin-top: 14px; }
-    .stamp {
-        display:inline-block;
-        font-family:'Fraunces', serif;
-        font-size:28px;
-        font-weight:600;
-        text-transform:uppercase;
-        letter-spacing: 1px;
-        color: #B3261E;
-        border: 3px solid #B3261E;
-        border-radius: 6px;
-        padding: 8px 20px;
-        transform: rotate(-2deg);
-        position: relative;
-    }
-    .stamp::before {
-        content: '';
-        position: absolute; inset: 4px;
-        border: 1px solid currentColor;
-        border-radius: 3px;
-        opacity: 0.55;
-    }
+    .result-kicker {font-size:11px; letter-spacing:1.5px; color:#6b7280; font-weight:700; text-transform:uppercase;}
+    .result-cat {font-size:30px; font-weight:800; margin:8px 0 0 0; text-transform:uppercase; color:#111827;}
     .conf-pill {
-        float:right; background:#14213D; color:white; font-weight:600;
-        font-family:'IBM Plex Mono', monospace;
-        font-size:12px; padding:7px 14px; border-radius:3px;
+        float:right; background:#2563eb; color:white; font-weight:700;
+        font-size:12px; padding:6px 13px; border-radius:999px;
     }
 
     /* --------------------------- Stats --------------------------- */
     .stat-box {
-        background:#FAF8F2;
-        border:1px solid #DCD5C6;
-        border-radius:4px;
+        background:#f8fafc;
+        border:1px solid #eef2f7;
+        border-radius:12px;
         padding:16px;
         text-align:center;
     }
-    .stat-num {font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:600; color:#14213D;}
-    .stat-lab {font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#5B6472; margin-top:4px; letter-spacing:1px; text-transform:uppercase;}
+    .stat-num {font-size:24px; font-weight:800; color:#111827;}
+    .stat-lab {font-size:12px; color:#6b7280; margin-top:2px;}
 
-    .bar-row {display:flex; align-items:center; margin:11px 0; font-size:13px;}
-    .bar-name {width:110px; color:#14213D; text-transform:capitalize; font-weight:500;}
-    .bar-track {flex:1; background:#F1EEE4; border-radius:2px; height:8px; overflow:hidden; margin:0 12px;}
-    .bar-fill {height:100%; border-radius:2px;}
-    .bar-val {width:54px; text-align:right; font-family:'IBM Plex Mono', monospace; font-weight:600; color:#14213D;}
+    .bar-row {display:flex; align-items:center; margin:10px 0; font-size:13px;}
+    .bar-name {width:110px; color:#374151; text-transform:capitalize;}
+    .bar-track {flex:1; background:#f1f5f9; border-radius:6px; height:9px; overflow:hidden; margin:0 12px;}
+    .bar-fill {height:100%; border-radius:6px;}
+    .bar-val {width:54px; text-align:right; font-weight:700; color:#111827;}
 
-    .ok-note {color:#3F6C2C; font-size:13px; font-weight:600;}
-    .warn-note {color:#946200; font-size:13px; font-weight:600;}
+    .ok-note {color:#16a34a; font-size:13px; font-weight:600;}
+    .warn-note {color:#d97706; font-size:13px; font-weight:600;}
 
     .badge {
-        display:inline-block; padding:4px 12px; border-radius:3px;
-        font-family:'IBM Plex Mono', monospace;
-        font-size:10.5px; font-weight:600; color:white; text-transform:uppercase; letter-spacing:0.5px;
+        display:inline-block; padding:3px 10px; border-radius:999px;
+        font-size:11px; font-weight:700; color:white; text-transform:capitalize;
     }
 
     /* --------------------------- Inputs --------------------------- */
     .stTextArea textarea {
-        background: #FEFDFA !important;
-        border: 1px solid #DCD5C6 !important;
-        border-radius: 3px !important;
-        color: #14213D !important;
-        font-family: 'IBM Plex Sans', sans-serif !important;
+        background: #f9fafb !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 10px !important;
+        color: #111827 !important;
+        font-family: 'Inter', sans-serif !important;
         min-height: 260px;
     }
-    .stTextArea textarea::placeholder {color:#9A9484 !important;}
+    .stTextArea textarea::placeholder {color:#94a3b8 !important;}
     .stTextArea textarea:focus {
-        border-color: #14213D !important;
-        box-shadow: 0 0 0 1px #14213D !important;
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
     }
 
+    /* Segmented pill tabs, matching the "Text Input / PDF Upload" control */
     .stTabs [data-baseweb="tab-list"] {
-        background: transparent !important;
-        border-bottom: 1px solid #DCD5C6;
+        background: #f1f5f9 !important;
+        border-radius: 10px !important;
+        padding: 4px !important;
         gap: 4px;
+        border-bottom: none !important;
+        width: fit-content;
     }
     .stTabs [data-baseweb="tab"] {
-        font-family: 'IBM Plex Mono', monospace !important;
-        font-size: 12px !important;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 13px !important;
         font-weight: 600 !important;
-        color: #5B6472 !important;
+        color: #64748b !important;
         background: transparent !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
     }
     .stTabs [aria-selected="true"] {
-        color: #14213D !important;
-        border-bottom-color: #B3261E !important;
+        background: #ffffff !important;
+        color: #1e293b !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        border-bottom: none !important;
     }
+    .stTabs [data-baseweb="tab-highlight"] {background: transparent !important;}
+    .stTabs [data-baseweb="tab-border"] {background: transparent !important;}
 
-    .input-hint {font-family:'IBM Plex Mono', monospace; color: #5B6472; font-size:11px; margin-top:8px; letter-spacing:0.3px;}
-    .feature-list {list-style:none; padding-left:0; margin:20px 0 0 0; color:#5B6472; font-size:13.5px;}
-    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px;}
-    .feature-list li::before {content:'—'; color:#B3261E; font-weight:700;}
+    .input-hint {color: #6b7280; font-size:12px; margin-top:8px; font-style: italic;}
+    .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#475569;}
+    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px; font-size:13.5px;}
+    .feature-list li::before {content:'✓'; color:#16a34a; font-weight:700;}
 
+    /* Analyze Text button — muted grey when disabled, like the reference */
     div.stButton > button {
-        border-radius:3px !important; font-weight:600 !important;
-        background: #14213D !important; color:white !important; border:none !important;
-        font-family: 'IBM Plex Mono', monospace !important;
-        letter-spacing: 0.5px; text-transform: uppercase; font-size: 13px !important;
+        border-radius:10px !important; font-weight:600 !important;
+        background: #94a3b8 !important; color:white !important; border:none !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 14px !important;
     }
-    div.stButton > button:hover {background: #B3261E !important;}
-    div.stButton > button[disabled] {background: #C7CAD6 !important; color: #ffffff !important;}
+    div.stButton > button:not([disabled]) {background: #1e3a8a !important;}
+    div.stButton > button:not([disabled]):hover {background: #1e40af !important;}
+    div.stButton > button[disabled] {background: #cbd5e1 !important; color: #ffffff !important;}
 
-    .placeholder-card {text-align:center; color:#5B6472; padding: 20px 0;}
-    .placeholder-card .headline {font-family:'Fraunces', serif; margin-top:18px; font-size:19px; font-weight:600; color:#14213D;}
+    .placeholder-card {text-align:center; color:#6b7280; padding: 30px 10px;}
+    .placeholder-card .icon-badge {
+        width: 56px; height: 56px; border-radius: 14px; background: #f1f5f9;
+        display:flex; align-items:center; justify-content:center; font-size:24px;
+        margin: 0 auto;
+    }
+    .placeholder-card .headline {margin-top:16px; font-size:17px; font-weight:700; color:#111827;}
 
     /* ------------------------------------------------------------------
        Force-readable overrides (Streamlit's own theme can otherwise win
@@ -281,18 +256,16 @@ CSS = """
     .card-title, .card-sub,
     label, .stSelectbox label, .stTextArea label, .stTextInput label,
     div[data-baseweb="select"] * {
-        color: #14213D !important;
+        color: #111827 !important;
     }
     div[data-baseweb="select"] > div {
-        background: #FEFDFA !important;
-        border-color: #DCD5C6 !important;
-        border-radius: 3px !important;
+        background: #ffffff !important;
+        border-color: #e5e7eb !important;
+        border-radius: 10px !important;
     }
     .stSelectbox label {
-        font-family: 'IBM Plex Mono', monospace !important;
-        font-size: 11.5px !important;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+        font-size: 13px !important;
+        font-weight: 600;
     }
 </style>
 """
@@ -338,7 +311,7 @@ def render_header() -> None:
             <div class="brand-logo">📰</div>
             <div>
               <div class="brand-title">Cambodian News Classifier</div>
-              <div class="brand-sub">Wire Desk · Automated Category Sorting</div>
+              <div class="brand-sub">Multi-class news article categorization</div>
             </div>
           </div>
         </div>
@@ -393,21 +366,25 @@ def page_classifier() -> None:
 
         model_selector()
 
-        tab_text, tab_pdf = st.tabs(["Direct Text Entry", "PDF Upload"])
+        tab_text, tab_pdf = st.tabs(["📄  Text Input", "⬆  PDF Upload"])
         with tab_text:
+            st.markdown(
+                '<div style="display:flex;justify-content:space-between;align-items:baseline;'
+                'margin:14px 0 8px;">'
+                '<span style="font-size:14px;font-weight:700;color:#111827;">Direct Text Entry</span>'
+                '<span class="input-hint" style="margin-top:0;">Perfect for copied articles or short texts</span>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
             text = st.text_area(
                 "Text input",
                 value=st.session_state.input_text,
                 height=320,
                 label_visibility="collapsed",
-                placeholder="Paste news text here (English). Perfect for copied articles or short texts.",
+                placeholder="Paste your news article here...\n\nThe government announced new economic policies today...",
                 key="text_area_input",
             )
             st.session_state.input_text = text
-            st.markdown(
-                '<div class="input-hint">Perfect for copied articles or short texts.</div>',
-                unsafe_allow_html=True,
-            )
 
         with tab_pdf:
             pdf = st.file_uploader("Upload a PDF article", type=["pdf"])
@@ -452,9 +429,12 @@ def page_classifier() -> None:
         if result is None:
             st.markdown(
                 '<div class="card placeholder-card">'
-                "<div style=\"font-size:44px;line-height:1;\">🔎</div>"
-                '<div class="headline">Ready to classify your article</div>'
-                "<div style=\"margin-top:12px;color:#5B6472;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
+                '<div class="icon-badge">📈</div>'
+                '<div class="headline">Results Panel</div>'
+                '<div style="margin-top:10px;color:#6b7280;font-size:14px;max-width:440px;'
+                'margin-left:auto;margin-right:auto;line-height:1.6;">'
+                'Enter a news article on the left and click <b>&quot;Analyze Text&quot;</b> '
+                'to see classification results, confidence scores, and detailed analytics.</div>'
                 "<ul class=\"feature-list\">"
                 "<li>Supports news text input</li>"
                 "<li>6-category classification model</li>"
@@ -471,10 +451,8 @@ def page_classifier() -> None:
             f"""
             <div class="result-head">
               <span class="conf-pill">{conf:.1f}% confidence</span>
-              <div class="result-kicker">Classified as</div>
-              <div class="stamp-wrap">
-                <span class="stamp" style="color:{_color(cat)};border-color:{_color(cat)};">{cat}</span>
-              </div>
+              <div class="result-kicker">🏆 Top Classification</div>
+              <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
             </div>
             """
         )
