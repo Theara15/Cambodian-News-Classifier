@@ -48,186 +48,251 @@ DEFAULT_COLOR = "#64748b"
 
 MIN_WORDS = 50
 
+FONTS = """
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+"""
+st.markdown(FONTS, unsafe_allow_html=True)
+
+# --------------------------------------------------------------------------- #
+# Design tokens — "Wire Desk": an editorial sorting-desk aesthetic. This is a
+# tool for triaging news copy, so it borrows from the newsroom (stamped
+# classifications, wire-service mono data, serif mastheads) instead of a
+# generic SaaS dashboard look.
+#   Ink navy   #14213D  – header, primary text, primary button
+#   Newsprint  #FAF8F2  – page background (warm, not stark white)
+#   Stamp red  #B3261E  – the one accent: the classification result only
+#   Slate      #5B6472  – secondary/meta text
+#   Rule       #DCD5C6  – hairlines, borders (warm grey, not cool #e5e7eb)
+# --------------------------------------------------------------------------- #
 CSS = """
 <style>
     /* hide default chrome */
     #MainMenu, footer, header[data-testid="stHeader"] {visibility: hidden;}
-    body, .stApp, .main {background: #f8f9fb !important; color: #111827 !important;}
+
+    html, body, .stApp, .main {
+        background:
+            radial-gradient(rgba(20,33,61,0.035) 1px, transparent 1px) 0 0/14px 14px,
+            #FAF8F2 !important;
+        color: #14213D !important;
+        font-family: 'IBM Plex Sans', -apple-system, sans-serif !important;
+    }
+
     .block-container {
-        background: #ffffff !important;
-        padding-top: 1rem;
+        background: transparent !important;
+        padding-top: 1.5rem;
         padding-bottom: 2rem;
-        border-radius: 24px;
-        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
         max-width: 1180px;
     }
+
+    /* --------------------------- Masthead --------------------------- */
     .app-header {
-        background: #1e3a8a;
-        border-radius: 18px;
-        padding: 20px 28px;
+        background: #14213D;
+        background-image: linear-gradient(180deg, #182849 0%, #101a30 100%);
+        border-radius: 4px;
+        padding: 26px 30px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         color: white;
-        box-shadow: 0 16px 40px rgba(30, 58, 138, 0.16);
+        border-bottom: 3px solid #B3261E;
     }
-    .brand {display: flex; align-items: center; gap: 14px;}
+    .brand {display: flex; align-items: center; gap: 16px;}
     .brand-logo {
-        width: 46px; height: 46px; border-radius: 14px;
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        width: 46px; height: 46px; border-radius: 4px;
+        background: #B3261E;
         display:flex; align-items:center; justify-content:center;
-        font-size: 22px; color:white; font-weight:800;
+        font-size: 22px; color:white;
     }
-    .brand-title {color:white; font-size:22px; font-weight:800; line-height:1.05;}
-    .brand-sub {color:rgba(255,255,255,0.8); font-size:11px; letter-spacing:1.5px; font-weight:600;}
-
-    .page-nav {
-        display:flex; gap: 12px;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        padding: 12px;
-        margin-bottom: 24px;
+    .brand-title {
+        color:white; font-family:'Fraunces', serif; font-size:25px;
+        font-weight:600; line-height:1.05; letter-spacing:0.2px;
     }
-    .page-nav button {
-        border:none;
-        background: transparent;
-        color: #475569;
-        font-weight: 600;
-        padding: 10px 18px;
-        border-radius: 999px;
-        transition: all 0.2s ease;
-    }
-    .page-nav button[data-selected="true"] {
-        background: #eff6ff;
-        color: #1d4ed8;
-        box-shadow: inset 0 -2px 0 0 #2563eb;
-    }
-    .page-nav button:hover {background: #f8fafc;}
-
-    .card {
-        background:#ffffff;
-        border:1px solid #e5e7eb;
-        border-radius:18px;
-        padding:24px 28px;
-        box-shadow:0 18px 40px rgba(15, 23, 42, 0.06);
-    }
-    .card-title {font-size:22px; font-weight:800; color:#111827; margin:0;}
-    .card-sub {font-size:14px; color:#64748b; margin-top:8px; line-height:1.5;}
-
-    .result-head {
-        background:#ffffff;
-        border:1px solid #e5e7eb;
-        border-radius:18px;
-        padding:24px 28px;
-        margin-bottom:18px;
-    }
-    .result-kicker {font-size:11px; letter-spacing:1.5px; color:#64748b; font-weight:700;}
-    .result-cat {font-size:32px; font-weight:800; margin:10px 0 0 0; text-transform:uppercase; color:#111827;}
-    .conf-pill {
-        float:right; background:#2563eb; color:white; font-weight:700;
-        font-size:12px; padding:7px 14px; border-radius:999px;
+    .brand-sub {
+        color:#9AA5C4; font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+        letter-spacing:2.5px; font-weight:500; margin-top:5px; text-transform:uppercase;
     }
 
-    .stat-box {
-        background:#ffffff;
-        border:1px solid #e5e7eb;
-        border-radius:16px;
-        padding:18px;
-        text-align:center;
-    }
-    .stat-num {font-size:28px; font-weight:800; color:#111827;}
-    .stat-lab {font-size:12px; color:#64748b; margin-top:4px;}
-
-    .bar-row {display:flex; align-items:center; margin:10px 0; font-size:13px;}
-    .bar-name {width:110px; color:#475569; text-transform:capitalize;}
-    .bar-track {flex:1; background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden; margin:0 12px;}
-    .bar-fill {height:100%; border-radius:6px;}
-    .bar-val {width:54px; text-align:right; font-weight:700; color:#0f172a;}
-
-    .ok-note {color:#16a34a; font-size:13px; font-weight:600;}
-    .warn-note {color:#d97706; font-size:13px; font-weight:600;}
-
-    .badge {
-        display:inline-block; padding:4px 12px; border-radius:999px;
-        font-size:11px; font-weight:700; color:white; text-transform:capitalize;
-    }
-
-    .stTextArea textarea {
-        background: #f9fafb !important;
-        border: 1px solid #d1d5db !important;
-        color: #111827 !important;
-        min-height: 260px;
-    }
-    .stTextArea textarea::placeholder {color:#94a3b8 !important;}
-
+    /* --------------------------- Nav / tabs --------------------------- */
     .page-nav-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 18px;
-        padding: 16px 20px;
-        margin-bottom: 24px;
+        background: transparent;
+        padding: 0 2px;
+        margin-bottom: 22px;
+        border-bottom: 1px solid #DCD5C6;
     }
-    .stRadio {
-        width: 100%;
-    }
-    .stRadio > div {
-        gap: 10px;
-    }
+    .stRadio { width: 100%; }
+    .stRadio > div { gap: 4px; }
     .stRadio button {
-        background: #f8fafc !important;
-        color: #475569 !important;
-        border: 1px solid #e5e7eb !important;
-        border-radius: 999px !important;
-        padding: 10px 18px !important;
-        font-weight: 700;
-        min-width: 140px;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 10px 6px !important;
+        margin-right: 22px !important;
+        font-family: 'IBM Plex Mono', monospace !important;
+        font-size: 12.5px !important;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-weight: 600;
+        box-shadow: inset 0 -2px 0 0 transparent !important;
     }
     .stRadio button[aria-checked="true"] {
-        background: #eff6ff !important;
-        color: #1d4ed8 !important;
-        border-color: #93c5fd !important;
-        box-shadow: inset 0 -2px 0 0 #2563eb;
+        box-shadow: inset 0 -2px 0 0 #B3261E !important;
     }
 
-    .input-hint {color: #64748b; font-size:12px; margin-top:6px;}
-    .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#475569;}
-    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px;}
-    .feature-list li::before {content:'✓'; color:#16a34a; font-weight:700;}
+    /* --------------------------- Cards --------------------------- */
+    .card {
+        background:#ffffff;
+        border:1px solid #DCD5C6;
+        border-radius:4px;
+        padding:26px 28px;
+        box-shadow: 3px 3px 0 rgba(20,33,61,0.04);
+    }
+    .card-title {
+        font-family:'Fraunces', serif; font-size:23px; font-weight:600;
+        color:#14213D; margin:0;
+    }
+    .card-sub {font-size:13.5px; color:#5B6472; margin-top:6px; line-height:1.5;}
 
-    div.stButton > button {border-radius:12px; font-weight:700; background: #2563eb; color:white; border:none;}
-    div.stButton > button:hover {background: #1e40af;}
-    div.stButton > button[disabled] {background: #93c5fd; color: #ffffff;}
-
-    .placeholder-card {text-align:center; color:#475569;}
-
-    /* ------------------------------------------------------------------
-       FORCE READABLE TEXT
-       Streamlit's own theme CSS can win specificity battles over the
-       custom classes above, leaving labels/tabs/radio text light-on-light
-       and hard to read (this is the same "invisible text" issue as the
-       HTML version — Streamlit ships a dark-mode-aware default that can
-       clash with a custom light theme). Force solid black + white
-       backgrounds here as a final override layer.
-       ------------------------------------------------------------------ */
-    .card-title, .card-sub,
-    label, .stSelectbox label, .stTextArea label, .stTextInput label,
-    div[data-baseweb="select"] * ,
-    .stTabs [data-baseweb="tab"] p,
-    .stTabs [data-baseweb="tab"],
-    .stRadio label p,
-    .stRadio button,
-    .stRadio button p {
-        color: #000000 !important;
+    /* --------------------------- Result: the stamp --------------------------- */
+    .result-head {
+        background:#ffffff;
+        border:1px solid #DCD5C6;
+        border-radius:4px;
+        padding:26px 28px;
+        margin-bottom:18px;
+        position: relative;
+        overflow: hidden;
+    }
+    .result-kicker {
+        font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+        letter-spacing:2px; color:#5B6472; font-weight:600; text-transform:uppercase;
+    }
+    .stamp-wrap { margin-top: 14px; }
+    .stamp {
+        display:inline-block;
+        font-family:'Fraunces', serif;
+        font-size:28px;
+        font-weight:600;
+        text-transform:uppercase;
+        letter-spacing: 1px;
+        color: #B3261E;
+        border: 3px solid #B3261E;
+        border-radius: 6px;
+        padding: 8px 20px;
+        transform: rotate(-2deg);
+        position: relative;
+    }
+    .stamp::before {
+        content: '';
+        position: absolute; inset: 4px;
+        border: 1px solid currentColor;
+        border-radius: 3px;
+        opacity: 0.55;
+    }
+    .conf-pill {
+        float:right; background:#14213D; color:white; font-weight:600;
+        font-family:'IBM Plex Mono', monospace;
+        font-size:12px; padding:7px 14px; border-radius:3px;
     }
 
-    div[data-baseweb="select"] > div {
-        background: #ffffff !important;
+    /* --------------------------- Stats --------------------------- */
+    .stat-box {
+        background:#FAF8F2;
+        border:1px solid #DCD5C6;
+        border-radius:4px;
+        padding:16px;
+        text-align:center;
+    }
+    .stat-num {font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:600; color:#14213D;}
+    .stat-lab {font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#5B6472; margin-top:4px; letter-spacing:1px; text-transform:uppercase;}
+
+    .bar-row {display:flex; align-items:center; margin:11px 0; font-size:13px;}
+    .bar-name {width:110px; color:#14213D; text-transform:capitalize; font-weight:500;}
+    .bar-track {flex:1; background:#F1EEE4; border-radius:2px; height:8px; overflow:hidden; margin:0 12px;}
+    .bar-fill {height:100%; border-radius:2px;}
+    .bar-val {width:54px; text-align:right; font-family:'IBM Plex Mono', monospace; font-weight:600; color:#14213D;}
+
+    .ok-note {color:#3F6C2C; font-size:13px; font-weight:600;}
+    .warn-note {color:#946200; font-size:13px; font-weight:600;}
+
+    .badge {
+        display:inline-block; padding:4px 12px; border-radius:3px;
+        font-family:'IBM Plex Mono', monospace;
+        font-size:10.5px; font-weight:600; color:white; text-transform:uppercase; letter-spacing:0.5px;
+    }
+
+    /* --------------------------- Inputs --------------------------- */
+    .stTextArea textarea {
+        background: #FEFDFA !important;
+        border: 1px solid #DCD5C6 !important;
+        border-radius: 3px !important;
+        color: #14213D !important;
+        font-family: 'IBM Plex Sans', sans-serif !important;
+        min-height: 260px;
+    }
+    .stTextArea textarea::placeholder {color:#9A9484 !important;}
+    .stTextArea textarea:focus {
+        border-color: #14213D !important;
+        box-shadow: 0 0 0 1px #14213D !important;
     }
 
     .stTabs [data-baseweb="tab-list"] {
-        background: #f8fafc !important;
+        background: transparent !important;
+        border-bottom: 1px solid #DCD5C6;
+        gap: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-family: 'IBM Plex Mono', monospace !important;
+        font-size: 12px !important;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-weight: 600 !important;
+        color: #5B6472 !important;
+        background: transparent !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #14213D !important;
+        border-bottom-color: #B3261E !important;
+    }
+
+    .input-hint {font-family:'IBM Plex Mono', monospace; color: #5B6472; font-size:11px; margin-top:8px; letter-spacing:0.3px;}
+    .feature-list {list-style:none; padding-left:0; margin:20px 0 0 0; color:#5B6472; font-size:13.5px;}
+    .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px;}
+    .feature-list li::before {content:'—'; color:#B3261E; font-weight:700;}
+
+    div.stButton > button {
+        border-radius:3px !important; font-weight:600 !important;
+        background: #14213D !important; color:white !important; border:none !important;
+        font-family: 'IBM Plex Mono', monospace !important;
+        letter-spacing: 0.5px; text-transform: uppercase; font-size: 13px !important;
+    }
+    div.stButton > button:hover {background: #B3261E !important;}
+    div.stButton > button[disabled] {background: #C7CAD6 !important; color: #ffffff !important;}
+
+    .placeholder-card {text-align:center; color:#5B6472; padding: 20px 0;}
+    .placeholder-card .headline {font-family:'Fraunces', serif; margin-top:18px; font-size:19px; font-weight:600; color:#14213D;}
+
+    /* ------------------------------------------------------------------
+       Force-readable overrides (Streamlit's own theme can otherwise win
+       specificity on labels/selects and wash text out to near-invisible).
+       ------------------------------------------------------------------ */
+    .card-title, .card-sub,
+    label, .stSelectbox label, .stTextArea label, .stTextInput label,
+    div[data-baseweb="select"] * {
+        color: #14213D !important;
+    }
+    div[data-baseweb="select"] > div {
+        background: #FEFDFA !important;
+        border-color: #DCD5C6 !important;
+        border-radius: 3px !important;
+    }
+    .stSelectbox label {
+        font-family: 'IBM Plex Mono', monospace !important;
+        font-size: 11.5px !important;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
     }
 </style>
 """
@@ -273,7 +338,7 @@ def render_header() -> None:
             <div class="brand-logo">📰</div>
             <div>
               <div class="brand-title">Cambodian News Classifier</div>
-              <div class="brand-sub">Multi-class news article categorization</div>
+              <div class="brand-sub">Wire Desk · Automated Category Sorting</div>
             </div>
           </div>
         </div>
@@ -387,9 +452,9 @@ def page_classifier() -> None:
         if result is None:
             st.markdown(
                 '<div class="card placeholder-card">'
-                "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
-                "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
-                "<div style=\"margin-top:12px;color:#64748b;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
+                "<div style=\"font-size:44px;line-height:1;\">🔎</div>"
+                '<div class="headline">Ready to classify your article</div>'
+                "<div style=\"margin-top:12px;color:#5B6472;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
                 "<ul class=\"feature-list\">"
                 "<li>Supports news text input</li>"
                 "<li>6-category classification model</li>"
@@ -406,8 +471,10 @@ def page_classifier() -> None:
             f"""
             <div class="result-head">
               <span class="conf-pill">{conf:.1f}% confidence</span>
-              <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
-              <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
+              <div class="result-kicker">Classified as</div>
+              <div class="stamp-wrap">
+                <span class="stamp" style="color:{_color(cat)};border-color:{_color(cat)};">{cat}</span>
+              </div>
             </div>
             """
         )
