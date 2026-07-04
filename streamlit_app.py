@@ -3,9 +3,6 @@
 Run from the project root:
 
     streamlit run streamlit_app.py
-
-Serves the fine-tuned encoders (BERT, DistilBERT, RoBERTa, ELECTRA) behind a 
-single classifier UI with session history and an about/model-card page.
 """
 
 from __future__ import annotations
@@ -34,7 +31,6 @@ def get_predictor():
         return DEFAULT_MODEL, MODEL_INFO, available_models, classify, get_labels
     except Exception as e:
         st.error(f"Failed to load predictor: {e}")
-        # Return fallback values
         return "roberta", {}, lambda: [], lambda x, y: {}, lambda: []
 
 
@@ -60,8 +56,12 @@ DEFAULT_COLOR = "#64748b"
 
 MIN_WORDS = 50
 
+# --------------------------------------------------------------------------- #
+# Custom CSS
+# --------------------------------------------------------------------------- #
 CSS = """
 <style>
+    /* Hide default chrome */
     #MainMenu, footer, header[data-testid="stHeader"] {visibility: hidden;}
     body, .stApp, .main {background: #f0f2f6 !important; color: #111827 !important;}
     .block-container {
@@ -73,6 +73,7 @@ CSS = """
         margin: 1rem auto !important;
     }
     
+    /* Header */
     .app-header {
         background: linear-gradient(135deg, #1a365d 0%, #2d4a7a 100%);
         border-radius: 18px;
@@ -94,6 +95,7 @@ CSS = """
     .brand-title {color:white; font-size:22px; font-weight:800; line-height:1.05;}
     .brand-sub {color:rgba(255,255,255,0.8); font-size:11px; letter-spacing:1.5px; font-weight:600;}
 
+    /* Cards */
     .card {
         background:#ffffff;
         border:1px solid #e5e7eb;
@@ -108,6 +110,7 @@ CSS = """
     .card-title {font-size:22px; font-weight:800; color:#111827; margin:0;}
     .card-sub {font-size:14px; color:#64748b; margin-top:8px; line-height:1.5;}
 
+    /* Result header */
     .result-head {
         background: linear-gradient(135deg, #ffffff 0%, #fafbff 100%);
         border:1px solid #e5e7eb;
@@ -138,6 +141,7 @@ CSS = """
         50% { opacity: 0.85; }
     }
 
+    /* Stats */
     .stat-box {
         background:#f8fafc;
         border:1px solid #e5e7eb;
@@ -153,6 +157,7 @@ CSS = """
     .stat-num {font-size:28px; font-weight:800; color:#111827;}
     .stat-lab {font-size:12px; color:#64748b; margin-top:4px;}
 
+    /* Confidence bars */
     .bar-row {display:flex; align-items:center; margin:10px 0; font-size:13px;}
     .bar-name {width:110px; color:#111827; text-transform:capitalize; font-weight:500;}
     .bar-track {flex:1; background:#f1f5f9; border-radius:6px; height:10px; overflow:hidden; margin:0 12px;}
@@ -167,6 +172,7 @@ CSS = """
         font-size:11px; font-weight:700; color:white; text-transform:capitalize;
     }
 
+    /* Text area */
     .stTextArea textarea {
         background: #f9fafb !important;
         border: 1px solid #d1d5db !important;
@@ -185,6 +191,7 @@ CSS = """
 
     .input-hint {color: #64748b; font-size:12px; margin-top:6px;}
 
+    /* Buttons */
     div.stButton > button {
         border-radius:12px; 
         font-weight:700; 
@@ -199,9 +206,6 @@ CSS = """
         box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
         transform: translateY(-1px);
     }
-    div.stButton > button:active {
-        transform: translateY(0);
-    }
     div.stButton > button[disabled] {
         background: #93c5fd; 
         color: #ffffff;
@@ -209,6 +213,7 @@ CSS = """
         transform: none;
     }
 
+    /* File uploader */
     .stFileUploader label {
         color: #111827 !important;
         font-weight: 600 !important;
@@ -226,6 +231,7 @@ CSS = """
         background: #1e40af !important;
     }
 
+    /* Selectbox */
     .stSelectbox label {
         color: #111827 !important;
         font-weight: 600 !important;
@@ -236,6 +242,7 @@ CSS = """
         border: 1px solid #d1d5db !important;
     }
 
+    /* Metrics */
     [data-testid="metric-container"] {
         background: #f8fafc;
         border-radius: 12px;
@@ -258,6 +265,7 @@ CSS = """
         font-weight: 800 !important;
     }
 
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
         background: #f1f4f9;
@@ -283,6 +291,7 @@ CSS = """
         display: none;
     }
 
+    /* History stats */
     .history-stats {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -316,6 +325,7 @@ CSS = """
         font-weight: 600;
     }
 
+    /* History items */
     .history-item {
         background: white;
         border-radius: 14px;
@@ -386,6 +396,7 @@ CSS = """
         transition: width 0.6s ease;
     }
 
+    /* Filter section */
     .filter-section {
         display: flex;
         gap: 12px;
@@ -408,6 +419,7 @@ CSS = """
         min-width: 150px;
     }
 
+    /* About page */
     .about-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -496,6 +508,7 @@ CSS = """
         margin-top: 4px;
     }
 
+    /* Placeholder */
     .placeholder-card {
         text-align:center; 
         color:#111827;
@@ -522,6 +535,7 @@ CSS = """
     .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px; color:#475569;}
     .feature-list li::before {content:'✓'; color:#16a34a; font-weight:700;}
 
+    /* Responsive */
     @media (max-width: 768px) {
         .history-stats {
             grid-template-columns: 1fr 1fr;
@@ -569,7 +583,7 @@ def _init_state() -> None:
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("last_result", None)
     st.session_state.setdefault("input_text", "")
-    st.session_state.setdefault("model_key", None)  # Will be set after loading
+    st.session_state.setdefault("model_key", None)
     st.session_state.setdefault("models_loaded", False)
     st.session_state.setdefault("available_models_list", [])
     st.session_state.setdefault("model_info_dict", {})
@@ -588,33 +602,42 @@ def html_block(html: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Model loader with error handling and caching
+# Model loader with error handling
 # --------------------------------------------------------------------------- #
 @st.cache_resource
 def load_models():
-    """Load models with error handling and caching."""
+    """Load models with error handling - ELECTRA will be skipped if it fails."""
     try:
         DEFAULT_MODEL, MODEL_INFO, available_models_fn, classify_fn, get_labels_fn = get_predictor()
         
-        # Get available models
+        # Get all available models
         try:
-            models = available_models_fn()
+            all_models = available_models_fn()
         except Exception as e:
             print(f"Error loading available models: {e}")
-            models = []
+            all_models = []
         
-        # Filter out models that fail to load
+        # Filter out ELECTRA and other problematic models
         valid_models = []
-        for model in models:
+        skipped_models = []
+        
+        for model in all_models:
+            # Skip ELECTRA due to architecture mismatch
+            if model == "electra":
+                print(f"Skipping {model} - architecture mismatch")
+                skipped_models.append(model)
+                continue
+                
             try:
                 # Test if model can load
                 classify_fn("test", model)
                 valid_models.append(model)
             except Exception as e:
                 print(f"Model {model} failed to load: {e}")
+                skipped_models.append(model)
                 continue
         
-        # If no models load, try default
+        # If no models load, try default (RoBERTa or BERT)
         if not valid_models and DEFAULT_MODEL:
             try:
                 classify_fn("test", DEFAULT_MODEL)
@@ -634,7 +657,8 @@ def load_models():
             "default_model": valid_models[0] if valid_models else None,
             "classify_fn": classify_fn,
             "get_labels_fn": get_labels_fn,
-            "loaded": True
+            "loaded": True,
+            "skipped_models": skipped_models
         }
     except Exception as e:
         st.error(f"Failed to load models: {e}")
@@ -644,7 +668,8 @@ def load_models():
             "default_model": None,
             "classify_fn": lambda x, y: {},
             "get_labels_fn": lambda: [],
-            "loaded": False
+            "loaded": False,
+            "skipped_models": []
         }
 
 
@@ -658,6 +683,7 @@ def get_classify_function():
         st.session_state.model_key = result["default_model"]
         st.session_state._classify_fn = result["classify_fn"]
         st.session_state._get_labels_fn = result["get_labels_fn"]
+        st.session_state._skipped_models = result.get("skipped_models", [])
     return st.session_state._classify_fn
 
 
@@ -729,10 +755,18 @@ def render_scores(scores: dict[str, float]) -> None:
 # Classifier page
 # --------------------------------------------------------------------------- #
 def page_classifier() -> None:
-    # Load models info
+    # Load models
     MODEL_INFO = get_model_info()
     models = get_available_models()
     labels = get_labels_fn()()
+    
+    # Show warning about skipped models
+    if hasattr(st.session_state, '_skipped_models') and st.session_state._skipped_models:
+        skipped = st.session_state._skipped_models
+        st.info(
+            f"ℹ️ Model(s) skipped: {', '.join(skipped)}. "
+            f"Only compatible models are shown."
+        )
     
     if not models:
         st.error(
@@ -772,7 +806,7 @@ def page_classifier() -> None:
                 value=st.session_state.input_text,
                 height=320,
                 label_visibility="collapsed",
-                placeholder="Paste news text here (English). Perfect for copied articles or short texts.\n\nThe government announced new economic policies today...",
+                placeholder="Paste news text here (English). Perfect for copied articles or short texts.",
                 key="text_area_input",
             )
             st.session_state.input_text = text
@@ -814,7 +848,7 @@ def page_classifier() -> None:
                 except Exception as e:
                     st.error(f"Classification failed: {e}")
                     scores = {cat: 0.0 for cat in labels}
-                gc.collect()  # Force garbage collection
+                gc.collect()
             
             top_cat = max(scores, key=scores.get)
             result = {
@@ -1135,6 +1169,13 @@ def page_about() -> None:
         """,
         unsafe_allow_html=True,
     )
+    
+    # Show skipped models info
+    if hasattr(st.session_state, '_skipped_models') and st.session_state._skipped_models:
+        skipped = st.session_state._skipped_models
+        st.info(
+            f"ℹ️ Note: Model(s) {', '.join(skipped)} were skipped due to architecture mismatches."
+        )
     
     st.markdown(
         f"""
