@@ -59,7 +59,7 @@ CSS = """
         padding-bottom: 2rem;
         border-radius: 24px;
         box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-        max-width: 1180px;
+        max-width: 1200px;
     }
     .app-header {
         background: #1e3a8a;
@@ -146,51 +146,6 @@ CSS = """
         margin-bottom: 24px;
     }
     
-    /* Navigation tabs - custom styling for black text */
-    .stRadio {
-        width: 100%;
-    }
-    .stRadio > div {
-        gap: 10px;
-        display: flex;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-    /* Force radio button labels to be black */
-    .stRadio label {
-        color: #111827 !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        background: transparent !important;
-        padding: 8px 18px !important;
-        border-radius: 8px !important;
-        border: none !important;
-        cursor: pointer !important;
-    }
-    .stRadio label:hover {
-        background: #f1f5f9 !important;
-    }
-    /* Selected state */
-    .stRadio label[data-baseweb="radio"] {
-        color: #111827 !important;
-    }
-    .stRadio div[role="radiogroup"] label {
-        color: #111827 !important;
-    }
-    /* Force the actual radio button text */
-    .stRadio span {
-        color: #111827 !important;
-    }
-    .stRadio div p {
-        color: #111827 !important;
-    }
-    /* Selected tab styling */
-    .stRadio label[aria-checked="true"] {
-        background: #eff6ff !important;
-        color: #1d4ed8 !important;
-        box-shadow: inset 0 -2px 0 0 #2563eb !important;
-    }
-
     .input-hint {color: #111827; font-size:12px; margin-top:6px;}
     .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#111827;}
     .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px; color:#111827;}
@@ -251,6 +206,9 @@ CSS = """
     .stSubheader {
         color: #111827 !important;
         font-weight: 700 !important;
+        font-size: 18px !important;
+        margin-top: 24px !important;
+        margin-bottom: 12px !important;
     }
     
     /* Style for captions */
@@ -261,6 +219,8 @@ CSS = """
     /* Style for success messages */
     .stSuccess {
         color: #111827 !important;
+        background: #f0fdf4 !important;
+        border-color: #bbf7d0 !important;
     }
     .stSuccess p {
         color: #111827 !important;
@@ -316,6 +276,84 @@ CSS = """
     }
     .stDataFrame td, .stDataFrame th {
         color: #111827 !important;
+    }
+    
+    /* About page specific styles */
+    .about-icon {
+        font-size: 48px;
+        text-align: center;
+        margin-bottom: 12px;
+    }
+    .about-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin: 16px 0;
+    }
+    .about-grid-item {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px 20px;
+        border: 1px solid #e5e7eb;
+        text-align: center;
+    }
+    .about-grid-item .icon {
+        font-size: 28px;
+        margin-bottom: 6px;
+    }
+    .about-grid-item .label {
+        font-weight: 700;
+        color: #111827;
+        font-size: 14px;
+    }
+    .about-grid-item .desc {
+        color: #64748b;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+    .about-section {
+        margin: 20px 0 12px 0;
+        padding: 16px 20px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border-left: 4px solid #2563eb;
+    }
+    .about-section .title {
+        font-weight: 700;
+        color: #111827;
+        font-size: 15px;
+    }
+    .about-section .content {
+        color: #475569;
+        font-size: 14px;
+        margin-top: 6px;
+        line-height: 1.7;
+    }
+    .about-section .content code {
+        background: #e5e7eb;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #1e3a8a;
+    }
+    .model-badge {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 12px;
+    }
+    .model-badge.best {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .model-badge.good {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+    .model-badge.available {
+        background: #f8fafc;
+        color: #475569;
     }
 </style>
 """
@@ -641,71 +679,232 @@ def page_history() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# About page
+# About page - Redesigned
 # --------------------------------------------------------------------------- #
 def page_about() -> None:
     labels = get_labels()
-    st.markdown('<p class="card-title">About</p>', unsafe_allow_html=True)
+    
+    # Header section
     st.markdown(
         """
-        <div style="color:#111827;">
-        This dashboard classifies English-language Cambodian news articles into one of
-        five categories using transformer encoders fine-tuned on a custom corpus scraped
-        from Cambodian news outlets. It is the deployment deliverable (Part 3) of the
-        thesis project.
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:48px;line-height:1.2;">📰</div>
+            <div style="font-size:24px;font-weight:800;color:#111827;margin-top:8px;">
+                Cambodian News Classifier
+            </div>
+            <div style="font-size:14px;color:#64748b;margin-top:4px;">
+                Thesis Project — Deployment Deliverable (Part 3)
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-    st.subheader("Categories")
-    st.write(", ".join(c.capitalize() for c in labels))
+    
+    # Quick stats grid
+    st.markdown(
+        """
+        <div class="about-grid">
+            <div class="about-grid-item">
+                <div class="icon">📂</div>
+                <div class="label">5 Categories</div>
+                <div class="desc">Politics, Technology, Economics, Health, Sports</div>
+            </div>
+            <div class="about-grid-item">
+                <div class="icon">🤖</div>
+                <div class="label">4 Models</div>
+                <div class="desc">BERT, DistilBERT, RoBERTa, ELECTRA</div>
+            </div>
+            <div class="about-grid-item">
+                <div class="icon">🏆</div>
+                <div class="label">Best Accuracy</div>
+                <div class="desc">RoBERTa — 91.75%</div>
+            </div>
+            <div class="about-grid-item">
+                <div class="icon">📊</div>
+                <div class="label">Balanced Dataset</div>
+                <div class="desc">Undersampling · No Environment Class</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Description
+    st.markdown(
+        """
+        <div style="background:#f8fafc;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;margin:12px 0;">
+            <div style="color:#475569;font-size:14px;line-height:1.8;">
+                This dashboard classifies English-language Cambodian news articles into one of
+                <strong>five categories</strong> using transformer encoders fine-tuned on a custom corpus
+                scraped from Cambodian news outlets. The <strong>Environment</strong> class was excluded
+                from the corpus, leaving five balanced categories.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Model Performance
+    st.markdown(
+        """
+        <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
+            📊 Model Performance
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Create a styled dataframe for model performance
+    model_data = []
+    for key, info in MODEL_INFO.items():
+        is_available = key in available_models()
+        is_best = key == "roberta"  # RoBERTa is the best performer
+        model_data.append({
+            "Model": info["display"],
+            "Accuracy": f"{info['accuracy']*100:.2f}%",
+            "Macro F1": f"{info['macro_f1']*100:.2f}%",
+            "Status": "✅ Available" if is_available else "❌ Unavailable",
+            "🏆": "⭐ Best" if is_best else ""
+        })
+    
+    df_models = pd.DataFrame(model_data)
+    st.dataframe(
+        df_models,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Model": st.column_config.TextColumn("Model", width="medium"),
+            "Accuracy": st.column_config.TextColumn("Accuracy", width="small"),
+            "Macro F1": st.column_config.TextColumn("Macro F1", width="small"),
+            "Status": st.column_config.TextColumn("Status", width="medium"),
+            "🏆": st.column_config.TextColumn("", width="small"),
+        }
+    )
+    
+    # Recommendation
+    st.success(
+        "🏆 **RoBERTa** is the recommended default — best accuracy (91.75%) and best "
+        "macro-F1 (91.77%) on this balanced dataset."
+    )
+    
+    # Pipeline section
+    st.markdown(
+        """
+        <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
+            🔧 Pipeline
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    st.markdown(
+        """
+        <div class="about-section">
+            <div class="title">1. Preprocess</div>
+            <div class="content">
+                Lowercase, strip HTML / URLs / emails / digits, drop stop-words 
+                (identical to training, via <code>preprocessing.clean.preprocess</code>)
+            </div>
+        </div>
+        <div class="about-section">
+            <div class="title">2. Tokenize</div>
+            <div class="content">
+                Model-specific HuggingFace tokenizer, <code>max_length=512</code>, body text only
+            </div>
+        </div>
+        <div class="about-section">
+            <div class="title">3. Classify</div>
+            <div class="content">
+                <code>TransformerClassifier</code> ([CLS] → 512 → LogSoftmax over 5 classes)
+            </div>
+        </div>
+        <div class="about-section">
+            <div class="title">4. Report</div>
+            <div class="content">
+                <code>exp()</code> of log-probabilities gives the confidence scores shown in the dashboard
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Categories section
+    st.markdown(
+        """
+        <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
+            📂 Categories
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Category chips
+    cat_cols = st.columns(5)
+    for idx, cat in enumerate(labels):
+        color = _color(cat)
+        with cat_cols[idx]:
+            st.markdown(
+                f"""
+                <div style="
+                    background:{color}20;
+                    border:2px solid {color};
+                    border-radius:12px;
+                    padding:12px 8px;
+                    text-align:center;
+                ">
+                    <div style="font-size:20px;font-weight:800;color:{color};text-transform:uppercase;">
+                        {cat[0]}
+                    </div>
+                    <div style="font-size:12px;font-weight:600;color:#111827;margin-top:4px;">
+                        {cat.capitalize()}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+    
     st.caption(
         "This is the *no-environment* variant — the Environment class was excluded "
         "from the corpus, leaving five balanced-enough categories."
     )
-
-    st.subheader("Model card — test-set performance")
-    rank = pd.DataFrame(
-        [
-            {
-                "Model": info["display"],
-                "Accuracy": f"{info['accuracy']*100:.2f}%",
-                "Macro F1": f"{info['macro_f1']*100:.2f}%",
-                "Available": "✓" if key in available_models() else "✗",
-            }
-            for key, info in MODEL_INFO.items()
-        ]
-    )
-    st.dataframe(rank, hide_index=True, use_container_width=True)
-    st.success(
-        "**RoBERTa** is the recommended default — best accuracy (91.75%) and best "
-        "macro-F1 (91.77%) on this balanced dataset."
-    )
-
-    st.subheader("Pipeline")
+    
+    # Known limitations
     st.markdown(
         """
-        <div style="color:#111827;">
-        1. **Preprocess** — lowercase, strip HTML / URLs / emails / digits, drop
-           stop-words (identical to training, via `preprocessing.clean.preprocess`).<br>
-        2. **Tokenize** — model-specific HuggingFace tokenizer, `max_length=512`,
-           body text only.<br>
-        3. **Classify** — `TransformerClassifier` ([CLS] → 512 → LogSoftmax over 5 classes).<br>
-        4. **Report** — `exp()` of log-probabilities gives the confidence scores shown.
+        <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
+            ⚠️ Known Limitations
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-    st.subheader("Known limitations")
+    
     st.markdown(
         """
-        <div style="color:#111827;">
-        - Trained only on a handful of Cambodian English-language outlets; may
-          underperform on other regions or styles.<br>
-        - English only — Khmer-language or heavily code-switched text is out of scope.<br>
-        - History is per-session and clears on browser refresh.
+        <div style="background:#fef2f2;border-radius:12px;padding:16px 20px;border:1px solid #fecaca;margin:12px 0;">
+            <div style="color:#475569;font-size:14px;line-height:1.8;">
+                <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+                    <span style="color:#dc2626;">•</span>
+                    <span>Trained only on a handful of Cambodian English-language outlets; may underperform on other regions or styles.</span>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+                    <span style="color:#dc2626;">•</span>
+                    <span>English only — Khmer-language or heavily code-switched text is out of scope.</span>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                    <span style="color:#dc2626;">•</span>
+                    <span>History is per-session and clears on browser refresh.</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Footer
+    st.markdown(
+        """
+        <div style="text-align:center;color:#94a3b8;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;">
+            Cambodian News Classifier v1.0 · Built with Streamlit · Thesis Project
         </div>
         """,
         unsafe_allow_html=True,
