@@ -79,7 +79,7 @@ class TransformerClassifier(nn.Module):
         # Get pooled output (CLS token for BERT-like models)
         pooled = getattr(outputs, "pooler_output", None)
         if pooled is None:
-            # For models without pooler (like DistilBERT), use CLS token
+            # For models without pooler (like DistilBERT, ELECTRA), use CLS token
             pooled = outputs.last_hidden_state[:, 0, :]
         
         logits = self.head(pooled)
@@ -101,6 +101,67 @@ def available_models() -> list[str]:
     return models
 
 
+def filter_state_dict(state_dict, model_state_dict, model_key: str):
+    """Filter state dict to only include keys that match the model architecture."""
+    filtered = {}
+    skipped = []
+    shape_mismatch = []
+    
+    # Keys that should be skipped for specific models
+    skip_patterns = {
+        "electra": [
+            "discriminator_predictions",
+            "electra.embeddings_project",
+            "embeddings_project",
+            "discriminator",
+        ],
+        "bert": [
+            "cls.seq_relationship",
+            "cls.predictions",
+            "seq_relationship",
+            "predictions",
+            "cls.",
+        ],
+    }
+    
+    for key, value in state_dict.items():
+        # Check if this key should be skipped
+        should_skip = False
+        
+        if model_key in skip_patterns:
+            for pattern in skip_patterns[model_key]:
+                if pattern in key:
+                    should_skip = True
+                    break
+        
+        if should_skip:
+            skipped.append(key)
+            continue
+        
+        # Check if key exists in model
+        if key in model_state_dict:
+            # Check shape match
+            if value.shape == model_state_dict[key].shape:
+                filtered[key] = value
+            else:
+                shape_mismatch.append(f"{key}: {value.shape} vs {model_state_dict[key].shape}")
+                skipped.append(key)
+        else:
+            skipped.append(key)
+    
+    if skipped:
+        print(f"Skipped {len(skipped)} keys for {model_key}")
+        if len(skipped) <= 10:
+            print(f"Skipped keys: {skipped}")
+        else:
+            print(f"Skipped keys: {skipped[:10]}... (and {len(skipped) - 10} more)")
+    
+    if shape_mismatch:
+        print(f"Shape mismatches: {shape_mismatch}")
+    
+    return filtered
+
+
 @lru_cache(maxsize=4)
 def load_model(model_key: str):
     """Load a model with strict=False to handle architecture mismatches."""
@@ -119,44 +180,32 @@ def load_model(model_key: str):
     # Create model with the same architecture used during training
     model = TransformerClassifier(hf_name, num_classes=len(labels)).to(DEVICE)
     
-    # Load the checkpoint with strict=False to ignore mismatched keys
+    # Load the checkpoint
     try:
         state_dict = torch.load(ckpt_path, map_location=DEVICE)
         
-        # Filter out keys that don't match the model's architecture
-        # This handles cases where the saved checkpoint has extra keys
+        # Get the model's state dict keys
         model_state_dict = model.state_dict()
-        filtered_state_dict = {}
-        skipped_keys = []
         
-        for key, value in state_dict.items():
-            if key in model_state_dict:
-                if value.shape == model_state_dict[key].shape:
-                    filtered_state_dict[key] = value
-                else:
-                    print(f"Shape mismatch for {key}: {value.shape} vs {model_state_dict[key].shape}")
-                    skipped_keys.append(key)
-            else:
-                print(f"Unexpected key: {key}")
-                skipped_keys.append(key)
-        
-        if skipped_keys:
-            print(f"Skipped {len(skipped_keys)} keys during loading")
+        # Filter the state dict to only include matching keys
+        filtered_state_dict = filter_state_dict(state_dict, model_state_dict, model_key)
         
         # Load the filtered state dict
         model.load_state_dict(filtered_state_dict, strict=False)
+        
+        print(f"✅ {model_key} loaded successfully")
         
     except Exception as e:
         print(f"Error loading checkpoint: {e}")
         # Try loading with strict=False as fallback
         try:
             model.load_state_dict(torch.load(ckpt_path, map_location=DEVICE), strict=False)
+            print(f"✅ {model_key} loaded with strict=False")
         except Exception as e2:
             print(f"Fallback loading also failed: {e2}")
             raise
     
     model.eval()
-    print(f"✅ {model_key} loaded successfully")
     
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(hf_name)
