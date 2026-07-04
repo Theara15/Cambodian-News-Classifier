@@ -121,15 +121,45 @@ def filter_state_dict(state_dict, model_state_dict, model_key: str):
             "seq_relationship",
             "predictions",
             "cls.",
+            "bert.embeddings.token_type_embeddings",  # BERT specific
+        ],
+        "roberta": [
+            "lm_head",  # RoBERTa LM head
+        ],
+        "distilbert": [
+            "vocab_transform",  # DistilBERT LM head
+            "vocab_layer_norm",
+            "vocab_projector",
         ],
     }
+    
+    # Also skip any keys that look like pre-training heads
+    pretraining_patterns = [
+        "predictions",
+        "seq_relationship",
+        "lm_head",
+        "vocab_transform",
+        "vocab_layer_norm",
+        "vocab_projector",
+        "cls.",
+        "mlm",
+        "nsp",
+    ]
     
     for key, value in state_dict.items():
         # Check if this key should be skipped
         should_skip = False
         
+        # Check model-specific patterns
         if model_key in skip_patterns:
             for pattern in skip_patterns[model_key]:
+                if pattern in key:
+                    should_skip = True
+                    break
+        
+        # Check general pre-training patterns
+        if not should_skip:
+            for pattern in pretraining_patterns:
                 if pattern in key:
                     should_skip = True
                     break
@@ -203,7 +233,17 @@ def load_model(model_key: str):
             print(f"✅ {model_key} loaded with strict=False")
         except Exception as e2:
             print(f"Fallback loading also failed: {e2}")
-            raise
+            # Try loading just the encoder weights
+            try:
+                # Load only the encoder part
+                state_dict = torch.load(ckpt_path, map_location=DEVICE)
+                encoder_keys = [k for k in state_dict.keys() if not k.startswith("head.")]
+                encoder_state = {k: state_dict[k] for k in encoder_keys}
+                model.encoder.load_state_dict(encoder_state, strict=False)
+                print(f"✅ {model_key} encoder loaded successfully")
+            except Exception as e3:
+                print(f"Encoder-only loading also failed: {e3}")
+                raise
     
     model.eval()
     
