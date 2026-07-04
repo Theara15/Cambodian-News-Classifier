@@ -355,6 +355,113 @@ CSS = """
         background: #f8fafc;
         color: #475569;
     }
+    
+    /* History page specific styles */
+    .history-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin: 16px 0;
+    }
+    .history-stat-item {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 14px 16px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+    }
+    .history-stat-item .number {
+        font-size: 24px;
+        font-weight: 800;
+        color: #111827;
+    }
+    .history-stat-item .label {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .history-item {
+        background: white;
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin-bottom: 10px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    .history-item:hover {
+        border-color: #93c5fd;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06);
+    }
+    .history-item .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .history-item .badge-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .history-item .meta-info {
+        color: #64748b;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .history-item .meta-info span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .history-item .preview {
+        margin-top: 10px;
+        color: #374151;
+        font-size: 14px;
+        line-height: 1.6;
+        padding: 10px 14px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border-left: 3px solid #e5e7eb;
+    }
+    .history-item .confidence-bar-mini {
+        display: inline-block;
+        height: 4px;
+        width: 60px;
+        background: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+        vertical-align: middle;
+        margin-left: 6px;
+    }
+    .history-item .confidence-bar-mini .fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    /* Filter section */
+    .filter-section {
+        display: flex;
+        gap: 12px;
+        margin: 16px 0;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .filter-section .search-box {
+        flex: 1;
+        min-width: 200px;
+    }
+    .filter-section .category-filter {
+        min-width: 150px;
+    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -598,34 +705,92 @@ def _read_pdf(uploaded) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Session history page
+# Session history page - Redesigned
 # --------------------------------------------------------------------------- #
 def page_history() -> None:
     history = st.session_state.history
-    st.markdown('<p class="card-title">Session History</p>', unsafe_allow_html=True)
+    
+    # Header
     st.markdown(
-        '<p class="card-sub">Classifications from this browser session (resets on refresh).</p>',
+        """
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+            <div>
+                <div style="font-size:22px;font-weight:800;color:#111827;">📋 Session History</div>
+                <div style="font-size:14px;color:#64748b;margin-top:4px;">
+                    All classification results from this session
+                </div>
+            </div>
+            <div style="font-size:13px;color:#64748b;">
+                🔄 Resets on browser refresh
+            </div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
     if not history:
-        st.info("No classifications yet. Analyze an article to populate the history.")
+        st.info("📭 No classifications yet. Analyze an article to populate the history.")
         return
 
+    # Stats
     confidences = [h["confidence"] for h in history]
     cats = [h["category"] for h in history]
     top_cat = max(set(cats), key=cats.count)
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Articles", len(history))
-    m2.metric("Categories used", len(set(cats)))
-    m3.metric("Avg confidence", f"{(sum(confidences) / len(confidences)) * 100:.1f}%")
-    m4.metric("Top category", top_cat.capitalize())
+    
+    # Create stats grid
+    st.markdown(
+        f"""
+        <div class="history-stats">
+            <div class="history-stat-item">
+                <div class="number">{len(history)}</div>
+                <div class="label">Total Articles</div>
+            </div>
+            <div class="history-stat-item">
+                <div class="number">{len(set(cats))}/5</div>
+                <div class="label">Categories Used</div>
+            </div>
+            <div class="history-stat-item">
+                <div class="number">{(sum(confidences) / len(confidences)) * 100:.1f}%</div>
+                <div class="label">Avg Confidence</div>
+            </div>
+            <div class="history-stat-item">
+                <div class="number" style="color:{_color(top_cat)};">{top_cat.capitalize()}</div>
+                <div class="label">Top Category</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
+    # Filters
     st.markdown("---")
-    f1, f2 = st.columns([3, 1])
-    query = f1.text_input("Search text", placeholder="Filter by preview text…")
-    cat_filter = f2.selectbox("Category", ["All"] + sorted(set(cats)))
+    
+    filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
+    
+    with filter_col1:
+        query = st.text_input(
+            "🔍 Search articles",
+            placeholder="Filter by preview text…",
+            label_visibility="collapsed",
+        )
+    
+    with filter_col2:
+        cat_filter = st.selectbox(
+            "Category",
+            ["All"] + sorted(set(cats)),
+            label_visibility="collapsed",
+        )
+    
+    with filter_col3:
+        sort_options = ["Most Recent", "Oldest First", "Highest Confidence", "Lowest Confidence"]
+        sort_by = st.selectbox(
+            "Sort",
+            sort_options,
+            index=0,
+            label_visibility="collapsed",
+        )
 
+    # Filter and sort
     rows = []
     for h in history:
         if query and query.lower() not in h["preview"].lower():
@@ -633,22 +798,71 @@ def page_history() -> None:
         if cat_filter != "All" and h["category"] != cat_filter:
             continue
         rows.append(h)
+    
+    # Sort
+    if sort_by == "Most Recent":
+        rows = rows  # Already in reverse chronological order
+    elif sort_by == "Oldest First":
+        rows = list(reversed(rows))
+    elif sort_by == "Highest Confidence":
+        rows = sorted(rows, key=lambda x: x["confidence"], reverse=True)
+    elif sort_by == "Lowest Confidence":
+        rows = sorted(rows, key=lambda x: x["confidence"])
 
+    # Results count
+    st.markdown(
+        f"""
+        <div style="margin:12px 0 16px 0;color:#64748b;font-size:13px;">
+            Showing <strong>{len(rows)}</strong> article{'s' if len(rows) != 1 else ''}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Display items
     for h in rows:
         color = _color(h["category"])
-        html_block(
+        conf_pct = h["confidence"] * 100
+        
+        # Determine confidence level color
+        if conf_pct >= 80:
+            conf_color = "#16a34a"  # Green - high confidence
+            conf_emoji = "🟢"
+        elif conf_pct >= 60:
+            conf_color = "#f59e0b"  # Yellow - medium confidence
+            conf_emoji = "🟡"
+        else:
+            conf_color = "#ef4444"  # Red - low confidence
+            conf_emoji = "🔴"
+        
+        st.markdown(
             f"""
-            <div class="card" style="margin-bottom:10px;padding:14px 18px;">
-              <span class="badge" style="background:{color};">{h['category']}</span>
-              <span style="float:right;color:#111827;font-size:12px;">
-                {h['confidence']*100:.1f}% &middot; {h['model']} &middot; {h['timestamp']}
-              </span>
-              <div style="margin-top:8px;color:#111827;font-size:14px;">{h['preview']}&hellip;</div>
+            <div class="history-item">
+                <div class="header">
+                    <div class="badge-group">
+                        <span class="badge" style="background:{color};">{h['category']}</span>
+                        <span style="font-size:13px;font-weight:600;color:#111827;">
+                            {conf_emoji} {conf_pct:.1f}%
+                        </span>
+                        <span class="confidence-bar-mini">
+                            <span class="fill" style="width:{conf_pct:.1f}%;background:{conf_color};"></span>
+                        </span>
+                    </div>
+                    <div class="meta-info">
+                        <span>🤖 {h['model']}</span>
+                        <span>📝 {h['words']:,} words</span>
+                        <span>🕐 {h['timestamp']}</span>
+                    </div>
+                </div>
+                <div class="preview">{h['preview']}…</div>
             </div>
-            """
+            """,
+            unsafe_allow_html=True,
         )
 
+    # Export section
     st.markdown("---")
+    
     df = pd.DataFrame(
         [
             {
@@ -663,23 +877,24 @@ def page_history() -> None:
             for h in history
         ]
     )
-    c1, c2 = st.columns(2)
-    with c1:
+    
+    col1, col2 = st.columns(2)
+    with col1:
         st.download_button(
-            "⬇ Export All (CSV)",
+            "📥 Export All (CSV)",
             data=df.to_csv(index=False).encode("utf-8"),
-            file_name="session_history.csv",
+            file_name=f"session_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
             use_container_width=True,
         )
-    with c2:
+    with col2:
         if st.button("🗑 Clear History", use_container_width=True):
             st.session_state.history = []
             st.rerun()
 
 
 # --------------------------------------------------------------------------- #
-# About page - Redesigned
+# About page - Redesigned with RoBERTa/DistilBERT note
 # --------------------------------------------------------------------------- #
 def page_about() -> None:
     labels = get_labels()
@@ -781,10 +996,25 @@ def page_about() -> None:
         }
     )
     
-    # Recommendation
-    st.success(
-        "🏆 **RoBERTa** is the recommended default — best accuracy (91.75%) and best "
-        "macro-F1 (91.77%) on this balanced dataset."
+    # Recommendation with RoBERTa/DistilBERT note
+    st.markdown(
+        """
+        <div style="background:#dbeafe;border-radius:12px;padding:16px 20px;border:1px solid #93c5fd;margin:12px 0;">
+            <div style="font-weight:700;color:#1e40af;font-size:15px;margin-bottom:6px;">
+                🏆 Model Recommendation
+            </div>
+            <div style="color:#1e3a8a;font-size:14px;line-height:1.7;">
+                <strong>RoBERTa</strong> is best overall by report/test metrics — 
+                highest accuracy (91.75%) and macro-F1 (91.77%) on the balanced dataset.
+            </div>
+            <div style="color:#1e3a8a;font-size:13px;line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid #93c5fd;">
+                💡 <strong>Note:</strong> <strong>DistilBERT</strong> can still look better on one input because 
+                confidence varies sample by sample. The model with the best test-set metrics 
+                may not always produce the highest confidence for every individual article.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
     
     # Pipeline section
