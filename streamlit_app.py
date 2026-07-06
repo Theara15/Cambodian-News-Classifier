@@ -58,7 +58,7 @@ CATEGORY_COLORS = {
     "sports": "#f59e0b",
 }
 DEFAULT_COLOR = "#64748b"
-MIN_WORDS = 20
+MIN_WORDS = 50
 
 CSS = """
 <style>
@@ -369,6 +369,9 @@ CSS = """
     }
     .sample-box .title {font-weight: 700; color: #0369a1; font-size: 14px;}
     .sample-box .content {color: #0c4a6e; font-size: 13px; line-height: 1.6; margin-top: 4px;}
+    .confidence-low {color: #ef4444;}
+    .confidence-medium {color: #f59e0b;}
+    .confidence-high {color: #16a34a;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -421,7 +424,7 @@ def render_header() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Confidence bars - FIXED with unsafe_allow_html=True
+# Confidence bars
 # --------------------------------------------------------------------------- #
 def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores") -> None:
     ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
@@ -458,14 +461,7 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
             <div class="warning-box">
                 <div class="title">⚠️ Low Confidence ({max_conf*100:.1f}%)</div>
                 <div class="content">
-                    The model is uncertain about this text. This usually happens when:
-                    <ul style="margin:8px 0 0 20px;padding:0;">
-                        <li>Text is too short (needs 50+ words)</li>
-                        <li>Text is not in English</li>
-                        <li>Text doesn't match any of the 5 categories</li>
-                    </ul>
-                    <br>
-                    <strong>Try:</strong> Use the sample article below or paste a longer English news article.
+                    The model is uncertain about this text. Try providing more text (50+ words).
                 </div>
             </div>
             ''',
@@ -605,28 +601,6 @@ def render_ensemble_results(results: dict) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Sample articles
-# --------------------------------------------------------------------------- #
-SAMPLE_ARTICLES = {
-    "Politics": """
-The National Assembly of Cambodia held its regular session today to discuss the national budget for the upcoming fiscal year. Prime Minister Hun Manet addressed the parliament, outlining the government's priorities including infrastructure development, education reform, and healthcare improvement. The budget proposal includes a 15% increase in education spending and significant investments in rural development. Opposition parties raised concerns about the transparency of the budget allocation process. The session was attended by all 125 members of parliament. The budget is expected to be voted on next week. This marks the first budget under the new government.
-""",
-    "Economics": """
-Cambodia's economy is showing strong growth with the Asian Development Bank projecting a 6.5% GDP increase for the upcoming year. The manufacturing sector, particularly garment exports, continues to be the main driver of economic growth. However, rising inflation and global economic uncertainty pose challenges for policymakers. The government is focusing on diversifying the economy through investments in tourism and technology. The National Bank of Cambodia has maintained stable monetary policy to support economic growth while managing inflation pressures. Trade with ASEAN partners has increased significantly.
-""",
-    "Technology": """
-Cambodia's digital economy is growing rapidly with the expansion of mobile internet and e-commerce platforms. The Ministry of Posts and Telecommunications announced a new digital payment system that will allow citizens to make transactions using QR codes. Several tech startups in Phnom Penh are developing innovative solutions for agriculture and logistics. The government plans to train 100,000 young Cambodians in digital skills over the next five years to support the growth of the technology sector. Mobile internet penetration has reached 70% of the population.
-""",
-    "Health": """
-Cambodia's healthcare system is undergoing significant reforms with the government increasing investment in public health infrastructure. The Ministry of Health announced a new program to improve maternal and child health services in rural areas. The program includes training for healthcare workers and the expansion of mobile health clinics. Cambodia has made significant progress in reducing maternal and child mortality rates. The government is also focusing on non-communicable diseases which are becoming a major health concern. International organizations are supporting these efforts.
-""",
-    "Sports": """
-Cambodia's national football team secured a place in the Southeast Asian Games semi-finals after a thrilling victory over their regional rivals. The team showed great determination and skill, with the winning goal scored in the final minutes of the match. The victory sparked celebrations across the country, with fans taking to social media to express their pride. The team will now prepare for the semi-final match against the defending champions. This is the best performance by the Cambodian national team in recent years.
-"""
-}
-
-
-# --------------------------------------------------------------------------- #
 # Classifier page
 # --------------------------------------------------------------------------- #
 def page_classifier() -> None:
@@ -672,38 +646,16 @@ def page_classifier() -> None:
             value=st.session_state.input_text,
             height=280,
             label_visibility="collapsed",
-            placeholder="Paste news text here (English). Perfect for copied articles or short texts.",
+            placeholder="Paste news text here (English).",
             key="text_area_input",
         )
         st.session_state.input_text = text
         
         word_count = len(text.split())
         st.markdown(
-            f'<div class="input-hint">📝 {word_count} words detected. Minimum 20 words recommended for reliable results.</div>',
+            f'<div class="input-hint">📝 {word_count} words detected. Minimum 50 words recommended.</div>',
             unsafe_allow_html=True,
         )
-        
-        # Sample article button
-        if st.button("📄 Load Sample Article", use_container_width=True):
-            st.session_state.show_sample = not st.session_state.show_sample
-        
-        if st.session_state.show_sample:
-            st.markdown("""
-                <div class="sample-box">
-                    <div class="title">📄 Choose a Sample Article</div>
-                    <div class="content">
-                        Select a category below to load a sample article:
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            sample_cols = st.columns(5)
-            for idx, (cat, article) in enumerate(SAMPLE_ARTICLES.items()):
-                with sample_cols[idx]:
-                    if st.button(cat, key=f"sample_{cat}", use_container_width=True):
-                        st.session_state.input_text = article.strip()
-                        st.session_state.show_sample = False
-                        st.rerun()
 
         words = len(text.split())
         analyze = st.button(
@@ -714,9 +666,9 @@ def page_classifier() -> None:
         )
         
         if analyze and PREDICTOR_AVAILABLE:
-            if words < 20:
+            if words < MIN_WORDS:
                 st.warning(
-                    f"⚠️ Only {words} words detected. 20+ words give more reliable results."
+                    f"⚠️ Only {words} words detected. {MIN_WORDS}+ words give more reliable results."
                 )
             
             try:
@@ -822,7 +774,7 @@ def page_classifier() -> None:
                     "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
                     "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify</div>"
                     "<div style=\"margin-top:12px;color:#111827;font-size:14px;\">"
-                    "Paste a news article or load a sample."
+                    "Paste a news article and click Analyze."
                     "</div>"
                     "<ul class=\"feature-list\">"
                     "<li>5-category classification</li>"
@@ -841,7 +793,7 @@ def page_classifier() -> None:
                 <div class="result-head">
                     <span class="conf-pill" style="background:{_color(cat)};">{conf:.1f}% confidence</span>
                     <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
-                    <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
+                    <div class="result-cat" style="color:{_color(cat)};">{cat.upper()}</div>
                 </div>
             """)
 
@@ -857,9 +809,9 @@ def page_classifier() -> None:
                 unsafe_allow_html=True,
             )
 
-            if result["words"] >= 20:
+            if result["words"] >= MIN_WORDS:
                 st.markdown(
-                    '<p class="ok-note">✅ Text length is sufficient for classification</p>',
+                    '<p class="ok-note">✅ Text length is optimal for classification</p>',
                     unsafe_allow_html=True,
                 )
             else:
