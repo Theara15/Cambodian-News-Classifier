@@ -29,8 +29,6 @@ MAX_LENGTH = 512
 DEVICE = torch.device("cpu")
 
 # Human-friendly names + test-set metrics
-# RoBERTa has the best academic performance (91.75% accuracy)
-# DistilBERT often performs better on individual articles
 MODEL_INFO: dict[str, dict] = {
     "distilbert": {"display": "DistilBERT", "accuracy": 0.9107, "macro_f1": 0.9111, "academic_rank": 2},
     "roberta": {"display": "RoBERTa 🏆", "accuracy": 0.9175, "macro_f1": 0.9177, "academic_rank": 1},
@@ -38,9 +36,7 @@ MODEL_INFO: dict[str, dict] = {
     "bert": {"display": "BERT", "accuracy": 0.8418, "macro_f1": 0.8429, "academic_rank": 4},
 }
 
-# DistilBERT is the default because it performs better on your specific use case
 DEFAULT_MODEL = "distilbert"
-
 LABELS: list[str] = ["economics", "health", "politics", "sports", "technology"]
 
 _MODEL_BACKBONES: dict[str, str] = {
@@ -51,8 +47,7 @@ _MODEL_BACKBONES: dict[str, str] = {
 }
 
 HEAD_SIZE = 512
-MIN_WORDS_FOR_CONFIDENCE = 20
-MIN_CHARS_FOR_CLASSIFICATION = 50
+MIN_WORDS = 20
 
 
 def preprocess(text: str) -> str:
@@ -107,7 +102,6 @@ def filter_state_dict(state_dict, model_state_dict):
     filtered = {}
     skipped = []
     
-    # Patterns to skip (pre-training heads that we don't need)
     skip_patterns = [
         "cls.predictions",
         "cls.seq_relationship",
@@ -187,24 +181,20 @@ def load_model(model_key: str):
 def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
     """
     Classify a text input and return confidence scores for each category.
-    Returns low confidence scores if text is too short or invalid.
     """
     labels = get_labels()
     
-    # Check if text has enough content
-    if len(text.strip()) < MIN_CHARS_FOR_CLASSIFICATION:
-        print(f"⚠️ Text too short: {len(text.strip())} characters")
-        # Return near-zero confidence across all categories
-        return {label: 0.01 for label in labels}
+    # Check if text is empty or too short
+    if not text or len(text.strip()) < 10:
+        print("⚠️ Text is empty or too short")
+        return {label: 1.0 / len(labels) for label in labels}
     
     clean = preprocess(text)
     
     # Check word count
     word_count = len(clean.split())
-    if word_count < MIN_WORDS_FOR_CONFIDENCE:
+    if word_count < MIN_WORDS:
         print(f"⚠️ Too few words: {word_count} words")
-        # Return low confidence across all categories
-        return {label: 0.02 for label in labels}
     
     try:
         tokenizer, model = load_model(model_key)
@@ -238,6 +228,11 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
             probs = probs + [0.0] * (len(labels) - len(probs))
         else:
             probs = probs[:len(labels)]
+    
+    # Normalize to sum to 1.0
+    total = sum(probs)
+    if total > 0:
+        probs = [p / total for p in probs]
     
     return dict(zip(labels, probs))
 
