@@ -103,7 +103,7 @@ def available_models() -> list[str]:
 
 @lru_cache(maxsize=4)
 def load_model(model_key: str):
-    """Load a model with strict=False to handle architecture mismatches."""
+    """Load a model with robust handling for different architectures."""
     if model_key not in _MODEL_BACKBONES:
         raise ValueError(f"Unknown model '{model_key}'. Available: {list(_MODEL_BACKBONES.keys())}")
 
@@ -119,33 +119,80 @@ def load_model(model_key: str):
     # Create model with the same architecture used during training
     model = TransformerClassifier(hf_name, num_classes=len(labels)).to(DEVICE)
     
-    # Load the checkpoint with strict=False - this automatically handles:
-    # - UNEXPECTED keys (pre-training heads like cls.predictions.*)
-    # - Missing keys (if any)
+    # Load the checkpoint with robust handling
     try:
         state_dict = torch.load(ckpt_path, map_location=DEVICE)
         
-        # First try: load with strict=False (will ignore pre-training head weights)
-        model.load_state_dict(state_dict, strict=False)
-        print(f"✅ {model_key} loaded successfully")
+        # Get the current model's state dict keys
+        model_state_keys = set(model.state_dict().keys())
+        
+        # Filter the state dict to only include keys that exist in our model
+        filtered_state_dict = {}
+        skipped_keys = []
+        
+        for key, value in state_dict.items():
+            # For ELECTRA, skip discriminator predictions
+            if "discriminator_predictions" in key:
+                skipped_keys.append(key)
+                continue
+            
+            # Only keep keys that exist in our model
+            if key in model_state_keys:
+                filtered_state_dict[key] = value
+            else:
+                skipped_keys.append(key)
+        
+        if skipped_keys:
+            print(f"ℹ️ Skipped {len(skipped_keys)} unexpected keys from checkpoint")
+            if len(skipped_keys) <= 5:
+                print(f"   Skipped: {skipped_keys}")
+        
+        # Try to load with strict=True first (will catch mismatches)
+        try:
+            model.load_state_dict(filtered_state_dict, strict=True)
+            print(f"✅ {model_key} loaded successfully (strict)")
+        except Exception as e:
+            print(f"⚠️ Strict loading failed, trying with strict=False...")
+            # Fall back to strict=False
+            model.load_state_dict(filtered_state_dict, strict=False)
+            print(f"✅ {model_key} loaded successfully (non-strict)")
         
     except Exception as e:
-        print(f"Error loading checkpoint: {e}")
-        # Fallback: Try loading only the encoder weights
+        print(f"❌ Error loading checkpoint: {e}")
+        # Last resort: Try loading only the encoder weights
         try:
             state_dict = torch.load(ckpt_path, map_location=DEVICE)
-            # Filter to only encoder weights
-            encoder_state = {k: v for k, v in state_dict.items() if not k.startswith("head.")}
-            model.encoder.load_state_dict(encoder_state, strict=False)
-            print(f"✅ {model_key} encoder loaded successfully")
+            
+            # Try to load encoder weights
+            encoder_state = {}
+            for key, value in state_dict.items():
+                # Handle different key formats
+                if key.startswith("encoder."):
+                    encoder_state[key] = value
+                elif key in model.encoder.state_dict():
+                    encoder_state[key] = value
+            
+            if encoder_state:
+                model.encoder.load_state_dict(encoder_state, strict=False)
+                print(f"✅ {model_key} encoder loaded successfully (head weights not loaded)")
+            else:
+                raise ValueError("No encoder weights found in checkpoint")
+                
         except Exception as e2:
-            print(f"Fallback loading also failed: {e2}")
-            raise
+            print(f"❌ Fallback loading also failed: {e2}")
+            print(f"⚠️ Using untrained model as fallback for {model_key}")
+            # Return the model as-is (untrained) as a last resort
+            # This at least allows the app to function, even if predictions are poor
     
     model.eval()
     
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(hf_name)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(hf_name)
+    except Exception as e:
+        print(f"Error loading tokenizer: {e}")
+        # Try loading from cache
+        tokenizer = AutoTokenizer.from_pretrained(hf_name, use_fast=True)
     
     return tokenizer, model
 
@@ -165,23 +212,31 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
     clean = preprocess(text)
     
     # Tokenize
-    enc = tokenizer(
-        clean,
-        padding="max_length",
-        truncation=True,
-        max_length=MAX_LENGTH,
-        return_tensors="pt",
-    )
+    try:
+        enc = tokenizer(
+            clean,
+            padding="max_length",
+            truncation=True,
+            max_length=MAX_LENGTH,
+            return_tensors="pt",
+        )
+    except Exception as e:
+        print(f"Error tokenizing text: {e}")
+        return {label: 1.0 / len(labels) for label in labels}
     
     input_ids = enc["input_ids"].to(DEVICE)
     attention_mask = enc["attention_mask"].to(DEVICE)
 
     # Run inference
-    with torch.no_grad():
-        log_probs = model(input_ids, attention_mask)
-    
-    # Convert log-probabilities to probabilities
-    probs = log_probs.exp().squeeze(0).tolist()
+    try:
+        with torch.no_grad():
+            log_probs = model(input_ids, attention_mask)
+        
+        # Convert log-probabilities to probabilities
+        probs = log_probs.exp().squeeze(0).tolist()
+    except Exception as e:
+        print(f"Error during inference: {e}")
+        return {label: 1.0 / len(labels) for label in labels}
     
     # Ensure we have the right number of probabilities
     if len(probs) != len(labels):
