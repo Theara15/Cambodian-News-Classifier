@@ -369,13 +369,6 @@ CSS = """
     }
     .sample-box .title {font-weight: 700; color: #0369a1; font-size: 14px;}
     .sample-box .content {color: #0c4a6e; font-size: 13px; line-height: 1.6; margin-top: 4px;}
-    .sample-box code {
-        background: #e0f2fe;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        color: #0369a1;
-    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -435,7 +428,8 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
     
     max_conf = max(scores.values()) if scores else 0
     
-    parts = [f'<div style="font-weight:700;color:#111827;margin:6px 0 4px;">{title}</div>']
+    # Build HTML
+    html_content = f'<div style="font-weight:700;color:#111827;margin:6px 0 4px;">{title}</div>'
     
     for cat, prob in ordered:
         pct = prob * 100
@@ -444,7 +438,7 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
         # Always show at least 0.5% for visibility
         bar_width = max(pct, 0.5)
         
-        parts.append(f'''
+        html_content += f'''
             <div class="bar-row">
                 <div class="bar-name">{cat}</div>
                 <div class="bar-track">
@@ -452,10 +446,10 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
                 </div>
                 <div class="bar-val" style="color:{color};">{pct:.1f}%</div>
             </div>
-        ''')
+        '''
     
-    # CRITICAL FIX: Add unsafe_allow_html=True
-    st.markdown("".join(parts), unsafe_allow_html=True)
+    # CRITICAL: unsafe_allow_html=True is REQUIRED here
+    st.markdown(html_content, unsafe_allow_html=True)
     
     # Show confidence level indicator
     if max_conf < 0.30:
