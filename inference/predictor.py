@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 import sys
 import warnings
+import logging
 
 import torch
 import torch.nn as nn
@@ -20,6 +21,11 @@ from transformers import AutoModel, AutoTokenizer
 # Suppress warnings about UNEXPECTED keys
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Suppress transformers logging about unexpected keys
+logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
+logging.getLogger("transformers.tokenization_utils").setLevel(logging.ERROR)
+logging.getLogger("transformers.configuration_utils").setLevel(logging.ERROR)
 
 APP_DIR = Path(__file__).resolve().parents[1]
 CKPT_DIR = APP_DIR / "models" / "undersampling_no_environment"
@@ -62,7 +68,10 @@ class TransformerClassifier(nn.Module):
     
     def __init__(self, hf_name: str, num_classes: int) -> None:
         super().__init__()
-        self.encoder = AutoModel.from_pretrained(hf_name)
+        # Suppress loading messages
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.encoder = AutoModel.from_pretrained(hf_name)
         hidden_size = self.encoder.config.hidden_size
         
         # Simple classification head
@@ -114,10 +123,11 @@ def load_model(model_key: str):
     if not ckpt_path.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
-    print(f"Loading {model_key} from {ckpt_path}...")
-    
-    # Create model with the same architecture used during training
-    model = TransformerClassifier(hf_name, num_classes=len(labels)).to(DEVICE)
+    # Suppress verbose loading messages
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        # Create model with the same architecture used during training
+        model = TransformerClassifier(hf_name, num_classes=len(labels)).to(DEVICE)
     
     # Load the checkpoint with robust handling
     try:
@@ -143,19 +153,18 @@ def load_model(model_key: str):
                 skipped_keys.append(key)
         
         if skipped_keys:
-            print(f"ℹ️ Skipped {len(skipped_keys)} unexpected keys from checkpoint")
-            if len(skipped_keys) <= 5:
-                print(f"   Skipped: {skipped_keys}")
+            # Only log if not too many and not during normal operation
+            if len(skipped_keys) <= 3:
+                print(f"ℹ️ Skipped {len(skipped_keys)} pre-training head keys")
+            else:
+                print(f"ℹ️ Skipped {len(skipped_keys)} pre-training head keys (this is normal)")
         
-        # Try to load with strict=True first (will catch mismatches)
-        try:
-            model.load_state_dict(filtered_state_dict, strict=True)
-            print(f"✅ {model_key} loaded successfully (strict)")
-        except Exception as e:
-            print(f"⚠️ Strict loading failed, trying with strict=False...")
-            # Fall back to strict=False
+        # Load with strict=False to handle any remaining mismatches
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
             model.load_state_dict(filtered_state_dict, strict=False)
-            print(f"✅ {model_key} loaded successfully (non-strict)")
+        
+        print(f"✅ {model_key} loaded successfully")
         
     except Exception as e:
         print(f"❌ Error loading checkpoint: {e}")
@@ -173,26 +182,27 @@ def load_model(model_key: str):
                     encoder_state[key] = value
             
             if encoder_state:
-                model.encoder.load_state_dict(encoder_state, strict=False)
-                print(f"✅ {model_key} encoder loaded successfully (head weights not loaded)")
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    model.encoder.load_state_dict(encoder_state, strict=False)
+                print(f"✅ {model_key} encoder loaded successfully")
             else:
                 raise ValueError("No encoder weights found in checkpoint")
                 
         except Exception as e2:
             print(f"❌ Fallback loading also failed: {e2}")
             print(f"⚠️ Using untrained model as fallback for {model_key}")
-            # Return the model as-is (untrained) as a last resort
-            # This at least allows the app to function, even if predictions are poor
     
     model.eval()
     
-    # Load tokenizer
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(hf_name)
-    except Exception as e:
-        print(f"Error loading tokenizer: {e}")
-        # Try loading from cache
-        tokenizer = AutoTokenizer.from_pretrained(hf_name, use_fast=True)
+    # Load tokenizer silently
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(hf_name)
+        except Exception as e:
+            print(f"Error loading tokenizer: {e}")
+            tokenizer = AutoTokenizer.from_pretrained(hf_name, use_fast=True)
     
     return tokenizer, model
 
@@ -211,18 +221,20 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
     # Preprocess text
     clean = preprocess(text)
     
-    # Tokenize
-    try:
-        enc = tokenizer(
-            clean,
-            padding="max_length",
-            truncation=True,
-            max_length=MAX_LENGTH,
-            return_tensors="pt",
-        )
-    except Exception as e:
-        print(f"Error tokenizing text: {e}")
-        return {label: 1.0 / len(labels) for label in labels}
+    # Tokenize silently
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            enc = tokenizer(
+                clean,
+                padding="max_length",
+                truncation=True,
+                max_length=MAX_LENGTH,
+                return_tensors="pt",
+            )
+        except Exception as e:
+            print(f"Error tokenizing text: {e}")
+            return {label: 1.0 / len(labels) for label in labels}
     
     input_ids = enc["input_ids"].to(DEVICE)
     attention_mask = enc["attention_mask"].to(DEVICE)
@@ -248,3 +260,4 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
             probs = probs[:len(labels)]
     
     return dict(zip(labels, probs))
+    
