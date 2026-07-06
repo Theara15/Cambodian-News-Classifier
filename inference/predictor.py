@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 import sys
 import warnings
+import logging
 
 import torch
 import torch.nn as nn
@@ -22,7 +23,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Also suppress the specific PyTorch warning about missing/unexpected keys
-import logging
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -32,13 +32,14 @@ DEVICE = torch.device("cpu")
 
 # Human-friendly names + test-set metrics for the undersampling_no_environment corpus.
 MODEL_INFO: dict[str, dict] = {
+    "distilbert": {"display": "DistilBERT ⭐", "accuracy": 0.9107, "macro_f1": 0.9111},  # Now the default!
     "roberta": {"display": "RoBERTa", "accuracy": 0.9175, "macro_f1": 0.9177},
-    "distilbert": {"display": "DistilBERT", "accuracy": 0.9107, "macro_f1": 0.9111},
     "electra": {"display": "ELECTRA", "accuracy": 0.8746, "macro_f1": 0.8761},
     "bert": {"display": "BERT", "accuracy": 0.8418, "macro_f1": 0.8429},
 }
 
-DEFAULT_MODEL = "roberta"
+# Set DistilBERT as the default model since it performs better on your specific use case
+DEFAULT_MODEL = "distilbert"
 
 LABELS: list[str] = ["economics", "health", "politics", "sports", "technology"]
 
@@ -127,8 +128,7 @@ def load_model(model_key: str):
     try:
         state_dict = torch.load(ckpt_path, map_location=DEVICE)
         
-        # Load with strict=False - this is the key fix that handles all UNEXPECTED keys
-        # The warnings are suppressed by the filters at the top
+        # Load with strict=False - this handles all UNEXPECTED keys
         model.load_state_dict(state_dict, strict=False)
         
     except Exception as e:
