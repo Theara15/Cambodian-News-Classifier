@@ -107,6 +107,15 @@ CSS = """
         float:right; background:#2563eb; color:white; font-weight:700;
         font-size:12px; padding:7px 14px; border-radius:999px;
     }
+    .recommended-badge {
+        background: #16a34a;
+        color: white;
+        padding: 2px 12px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        margin-left: 8px;
+    }
 
     .stat-box {
         background:#ffffff;
@@ -151,7 +160,6 @@ CSS = """
 
     .placeholder-card {text-align:center; color:#111827;}
     
-    /* Style for file uploader */
     .stFileUploader label {
         color: #111827 !important;
         font-weight: 600 !important;
@@ -258,12 +266,6 @@ CSS = """
         color: #111827 !important;
     }
     
-    /* About page specific styles */
-    .about-icon {
-        font-size: 48px;
-        text-align: center;
-        margin-bottom: 12px;
-    }
     .about-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -316,27 +318,7 @@ CSS = """
         font-size: 12px;
         color: #1e3a8a;
     }
-    .model-badge {
-        display: inline-block;
-        padding: 6px 16px;
-        border-radius: 999px;
-        font-weight: 700;
-        font-size: 12px;
-    }
-    .model-badge.best {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-    .model-badge.good {
-        background: #f0fdf4;
-        color: #16a34a;
-    }
-    .model-badge.available {
-        background: #f8fafc;
-        color: #475569;
-    }
     
-    /* History page specific styles */
     .history-stats {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -427,23 +409,6 @@ CSS = """
         transition: width 0.3s ease;
     }
     
-    /* Filter section */
-    .filter-section {
-        display: flex;
-        gap: 12px;
-        margin: 16px 0;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .filter-section .search-box {
-        flex: 1;
-        min-width: 200px;
-    }
-    .filter-section .category-filter {
-        min-width: 150px;
-    }
-    
-    /* Model comparison styles */
     .model-comparison-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -480,6 +445,10 @@ CSS = """
         font-size: 11px;
         color: #94a3b8;
         margin-top: 4px;
+    }
+    .model-card.recommended {
+        border: 2px solid #16a34a;
+        background: #f0fdf4;
     }
     
     .ensemble-banner {
@@ -535,6 +504,14 @@ CSS = """
     .agreement-item.low {
         background: #fee2e2;
         color: #991b1b;
+    }
+    
+    .distilbert-highlight {
+        background: linear-gradient(135deg, #dcfce7, #86efac);
+        border-radius: 12px;
+        padding: 12px 16px;
+        border: 2px solid #16a34a;
+        margin: 8px 0;
     }
 </style>
 """
@@ -613,14 +590,12 @@ def render_model_comparison(results: dict) -> None:
     """Render comparison of all models with their predictions."""
     st.markdown("### 🤖 Model Comparison")
     
-    # Filter out errors
     valid_results = {k: v for k, v in results.items() if "error" not in v}
     
     if not valid_results:
         st.warning("No models could classify the text.")
         return
     
-    # Create grid
     cols = st.columns(min(len(valid_results), 4))
     
     for idx, (key, result) in enumerate(valid_results.items()):
@@ -632,11 +607,18 @@ def render_model_comparison(results: dict) -> None:
         color = _color(pred_cat)
         display_name = result.get("display_name", key)
         
+        # Highlight DistilBERT as recommended
+        is_recommended = key == "distilbert"
+        
         with cols[idx]:
+            card_class = "model-card recommended" if is_recommended else "model-card"
             st.markdown(
                 f"""
-                <div class="model-card" style="border-left:4px solid {color};">
-                    <div class="model-name">{display_name}</div>
+                <div class="{card_class}" style="border-left:4px solid {color};">
+                    <div class="model-name">
+                        {display_name}
+                        { '⭐' if is_recommended else '' }
+                    </div>
                     <div class="model-prediction" style="color:{color};">
                         {pred_cat}
                     </div>
@@ -652,7 +634,6 @@ def render_model_comparison(results: dict) -> None:
                 unsafe_allow_html=True
             )
             
-            # Show top 3 predictions for this model
             with st.expander(f"Top 3 for {display_name}"):
                 sorted_probs = sorted(result["probs"].items(), key=lambda x: x[1], reverse=True)
                 for cat, prob in sorted_probs[:3]:
@@ -669,15 +650,14 @@ def render_model_comparison(results: dict) -> None:
                     )
 
 
-def render_ensemble_results(results: dict) -> None:
+def render_ensemble_results(results: dict) -> dict:
     """Render ensemble prediction results."""
     valid_results = {k: v for k, v in results.items() if "error" not in v}
     
     if len(valid_results) < 2:
         st.info("Need at least 2 models for ensemble prediction.")
-        return
+        return {}
     
-    # Calculate ensemble by averaging probabilities
     ensemble_probs = {}
     for label in get_labels():
         ensemble_probs[label] = sum(r["probs"][label] for r in valid_results.values()) / len(valid_results)
@@ -686,7 +666,6 @@ def render_ensemble_results(results: dict) -> None:
     conf = ensemble_probs[pred]
     color = _color(pred)
     
-    # Calculate agreement
     predictions = [r["predicted"] for r in valid_results.values()]
     agreement = Counter(predictions)
     most_agreed = max(agreement, key=agreement.get)
@@ -706,7 +685,6 @@ def render_ensemble_results(results: dict) -> None:
         unsafe_allow_html=True
     )
     
-    # Show agreement breakdown
     st.markdown("**Model Agreement:**")
     agreement_html = '<div class="agreement-bar">'
     for cat, count in agreement.items():
@@ -721,10 +699,8 @@ def render_ensemble_results(results: dict) -> None:
     agreement_html += '</div>'
     st.markdown(agreement_html, unsafe_allow_html=True)
     
-    # Show ensemble confidence scores
     render_scores(ensemble_probs, "📊 Ensemble Confidence Scores")
     
-    # Store ensemble result for history
     return {
         "predicted": pred,
         "confidence": conf,
@@ -755,7 +731,6 @@ def page_classifier() -> None:
             """
         )
 
-        # Model selection mode
         col_mode, col_model = st.columns([1, 2])
         with col_mode:
             use_ensemble = st.checkbox(
@@ -768,6 +743,13 @@ def page_classifier() -> None:
         with col_model:
             if not use_ensemble:
                 model_selector()
+
+        # Show recommendation notice
+        if not use_ensemble:
+            st.info(
+                "💡 **Tip:** DistilBERT is currently performing best for your use case. "
+                "Try Ensemble Mode for even more robust predictions!"
+            )
 
         tab_text, tab_pdf = st.tabs(["Direct Text Entry", "PDF Upload"])
         with tab_text:
@@ -820,15 +802,21 @@ def page_classifier() -> None:
             else:
                 with st.spinner("Running inference…"):
                     scores = classify(text, st.session_state.model_key)
+                    model_display = MODEL_INFO[st.session_state.model_key]["display"]
+                    # Clean up the display name (remove emoji for history)
+                    model_display_clean = model_display.replace(" ⭐", "")
+                    
                     st.session_state.last_result = {
                         "timestamp": datetime.now().isoformat(timespec="seconds"),
-                        "model": MODEL_INFO[st.session_state.model_key]["display"],
+                        "model": model_display_clean,
+                        "model_key": st.session_state.model_key,
                         "category": max(scores, key=scores.get),
                         "confidence": max(scores.values()),
                         "scores": scores,
                         "chars": len(text),
                         "words": words,
                         "preview": text.strip().replace("\n", " ")[:160],
+                        "is_recommended": st.session_state.model_key == "distilbert",
                     }
                     st.session_state.last_multiple_results = None
                     st.session_state.history.insert(0, st.session_state.last_result)
@@ -853,13 +841,9 @@ def page_classifier() -> None:
                     unsafe_allow_html=True,
                 )
             else:
-                # Show model comparison
                 render_model_comparison(results)
-                
-                # Show ensemble results
                 ensemble_result = render_ensemble_results(results)
                 
-                # Store ensemble result in history if not already stored
                 if ensemble_result and not any(
                     h.get("is_ensemble", False) for h in st.session_state.history[:1]
                 ):
@@ -878,7 +862,6 @@ def page_classifier() -> None:
                     }
                     st.session_state.history.insert(0, history_entry)
                 
-                # Export button
                 if st.button("📥 Export Results", use_container_width=True):
                     export_data = {
                         "timestamp": datetime.now().isoformat(),
@@ -902,14 +885,15 @@ def page_classifier() -> None:
                     )
         
         else:
-            # Single model mode
             result = st.session_state.last_result
             if result is None:
                 st.markdown(
                     '<div class="card placeholder-card">'
                     "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
                     "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
-                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
+                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">"
+                    f"<strong>DistilBERT</strong> is the default model (works best for your use case)."
+                    "</div>"
                     "<ul class=\"feature-list\">"
                     "<li>Supports news text input</li>"
                     "<li>5-category classification model</li>"
@@ -922,12 +906,16 @@ def page_classifier() -> None:
 
             cat = result["category"]
             conf = result["confidence"] * 100
+            
+            # Show recommended badge if using DistilBERT
+            recommended_badge = ' <span class="recommended-badge">⭐ Recommended</span>' if result.get("is_recommended", False) else ''
+            
             html_block(
                 f"""
                 <div class="result-head">
                   <span class="conf-pill">{conf:.1f}% confidence</span>
                   <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
-                  <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
+                  <div class="result-cat" style="color:{_color(cat)};">{cat}{recommended_badge}</div>
                 </div>
                 """
             )
@@ -1018,7 +1006,6 @@ def page_history() -> None:
         st.info("📭 No classifications yet. Analyze an article to populate the history.")
         return
 
-    # Stats
     confidences = [h["confidence"] for h in history]
     cats = [h["category"] for h in history]
     top_cat = max(set(cats), key=cats.count)
@@ -1047,7 +1034,6 @@ def page_history() -> None:
         unsafe_allow_html=True,
     )
 
-    # Filters
     st.markdown("---")
     
     filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
@@ -1075,7 +1061,6 @@ def page_history() -> None:
             label_visibility="collapsed",
         )
 
-    # Filter and sort
     rows = []
     for h in history:
         if query and query.lower() not in h["preview"].lower():
@@ -1116,8 +1101,8 @@ def page_history() -> None:
             conf_color = "#ef4444"
             conf_emoji = "🔴"
         
-        # Show ensemble badge if applicable
         ensemble_badge = ' 🎯 Ensemble' if h.get('is_ensemble', False) else ''
+        recommended_badge = ' ⭐' if h.get('is_recommended', False) else ''
         
         st.markdown(
             f"""
@@ -1131,7 +1116,7 @@ def page_history() -> None:
                         <span class="confidence-bar-mini">
                             <span class="fill" style="width:{conf_pct:.1f}%;background:{conf_color};"></span>
                         </span>
-                        <span style="font-size:11px;color:#64748b;">{h['model']}{ensemble_badge}</span>
+                        <span style="font-size:11px;color:#64748b;">{h['model']}{ensemble_badge}{recommended_badge}</span>
                     </div>
                     <div class="meta-info">
                         <span>📝 {h['words']:,} words</span>
@@ -1144,7 +1129,6 @@ def page_history() -> None:
             unsafe_allow_html=True,
         )
 
-    # Export section
     st.markdown("---")
     
     df = pd.DataFrame(
@@ -1199,6 +1183,25 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
+    # Show DistilBERT recommendation prominently
+    st.markdown(
+        """
+        <div class="distilbert-highlight">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:28px;">⭐</span>
+                <div>
+                    <div style="font-weight:700;color:#16a34a;font-size:16px;">DistilBERT is the Recommended Model</div>
+                    <div style="color:#166534;font-size:13px;">
+                        Based on your testing, DistilBERT consistently outperforms other models 
+                        on your specific use case. Use it as the default or try Ensemble Mode!
+                    </div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
     st.markdown(
         """
         <div class="about-grid">
@@ -1213,9 +1216,9 @@ def page_about() -> None:
                 <div class="desc">BERT, DistilBERT, RoBERTa, ELECTRA</div>
             </div>
             <div class="about-grid-item">
-                <div class="icon">🏆</div>
-                <div class="label">Best Accuracy</div>
-                <div class="desc">RoBERTa — 91.75%</div>
+                <div class="icon">⭐</div>
+                <div class="label">Best for Your Use Case</div>
+                <div class="desc">DistilBERT — Most reliable predictions</div>
             </div>
             <div class="about-grid-item">
                 <div class="icon">🎯</div>
@@ -1253,13 +1256,13 @@ def page_about() -> None:
     model_data = []
     for key, info in MODEL_INFO.items():
         is_available = key in available_models()
-        is_best = key == "roberta"
+        is_recommended = key == "distilbert"
         model_data.append({
-            "Model": info["display"],
+            "Model": f"{info['display']} {'⭐' if is_recommended else ''}",
             "Accuracy": f"{info['accuracy']*100:.2f}%",
             "Macro F1": f"{info['macro_f1']*100:.2f}%",
             "Status": "✅ Available" if is_available else "❌ Unavailable",
-            "🏆": "⭐ Best" if is_best else ""
+            "Recommendation": "⭐ Recommended" if is_recommended else "",
         })
     
     df_models = pd.DataFrame(model_data)
@@ -1272,7 +1275,7 @@ def page_about() -> None:
             "Accuracy": st.column_config.TextColumn("Accuracy", width="small"),
             "Macro F1": st.column_config.TextColumn("Macro F1", width="small"),
             "Status": st.column_config.TextColumn("Status", width="medium"),
-            "🏆": st.column_config.TextColumn("", width="small"),
+            "Recommendation": st.column_config.TextColumn("", width="small"),
         }
     )
     
@@ -1280,15 +1283,12 @@ def page_about() -> None:
         """
         <div style="background:#dbeafe;border-radius:12px;padding:16px 20px;border:1px solid #93c5fd;margin:12px 0;">
             <div style="font-weight:700;color:#1e40af;font-size:15px;margin-bottom:6px;">
-                🏆 Model Recommendation
+                💡 Model Selection Guide
             </div>
             <div style="color:#1e3a8a;font-size:14px;line-height:1.7;">
-                <strong>RoBERTa</strong> is best overall by report/test metrics — 
-                highest accuracy (91.75%) and macro-F1 (91.77%) on the balanced dataset.
-            </div>
-            <div style="color:#1e3a8a;font-size:13px;line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid #93c5fd;">
-                💡 <strong>Note:</strong> Different models may perform better on different articles.
-                Use <strong>Ensemble Mode</strong> to combine all models for more robust predictions.
+                <strong>DistilBERT</strong> is the default and recommended model based on your testing.<br>
+                <strong>RoBERTa</strong> has the highest test-set metrics but may underperform on specific articles.<br>
+                Use <strong>Ensemble Mode</strong> to combine all models for the most robust predictions.
             </div>
         </div>
         """,
@@ -1433,16 +1433,21 @@ def model_selector() -> None:
     if st.session_state.model_key not in models:
         st.session_state.model_key = models[0]
     default_idx = models.index(st.session_state.model_key)
+    
+    # Format function with recommendation badge
+    def format_func(k):
+        label = f"{MODEL_INFO[k]['display']}  ·  Acc {MODEL_INFO[k]['accuracy']*100:.1f}% / F1 {MODEL_INFO[k]['macro_f1']*100:.1f}%"
+        if k == "distilbert":
+            label += " ⭐ RECOMMENDED"
+        return label
+    
     choice = st.selectbox(
         "🤖 Classification model",
         models,
         index=default_idx,
-        format_func=lambda k: (
-            f"{MODEL_INFO[k]['display']}  ·  "
-            f"Acc {MODEL_INFO[k]['accuracy']*100:.1f}% / F1 {MODEL_INFO[k]['macro_f1']*100:.1f}%"
-        ),
+        format_func=format_func,
         key="model_select",
-        help="Pick which fine-tuned encoder runs the classification.",
+        help="Pick which fine-tuned encoder runs the classification. DistilBERT is recommended.",
     )
     st.session_state.model_key = choice
 
@@ -1452,17 +1457,21 @@ def render_sidebar() -> None:
         st.header("⚙️ Settings")
         current = st.session_state.model_key
         if current in MODEL_INFO:
-            st.markdown(f"**Active model:** {MODEL_INFO[current]['display']}")
+            is_recommended = current == "distilbert"
+            st.markdown(f"**Active model:** {MODEL_INFO[current]['display']} {'⭐' if is_recommended else ''}")
+            if is_recommended:
+                st.success("✅ Recommended model")
             st.caption(
                 f"Accuracy {MODEL_INFO[current]['accuracy']*100:.2f}% · "
                 f"Macro-F1 {MODEL_INFO[current]['macro_f1']*100:.2f}% (test set)"
             )
-        st.caption("Switch models from the dropdown on the Classifier page.")
         st.divider()
         st.caption("Corpus: undersampling_no_environment · 5 classes · max_length 512")
         if st.session_state.use_ensemble:
             st.success("🎯 Ensemble Mode: ON")
             st.caption("Using all available models")
+        else:
+            st.info("💡 Tip: Try Ensemble Mode for more robust predictions")
 
 
 def main() -> None:
