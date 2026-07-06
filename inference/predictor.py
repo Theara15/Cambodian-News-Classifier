@@ -31,14 +31,17 @@ MAX_LENGTH = 512
 DEVICE = torch.device("cpu")
 
 # Human-friendly names + test-set metrics for the undersampling_no_environment corpus.
+# Note: RoBERTa has the best academic performance (91.75% accuracy)
+# But DistilBERT often performs better on individual articles
 MODEL_INFO: dict[str, dict] = {
-    "distilbert": {"display": "DistilBERT ⭐", "accuracy": 0.9107, "macro_f1": 0.9111},  # Now the default!
-    "roberta": {"display": "RoBERTa", "accuracy": 0.9175, "macro_f1": 0.9177},
-    "electra": {"display": "ELECTRA", "accuracy": 0.8746, "macro_f1": 0.8761},
-    "bert": {"display": "BERT", "accuracy": 0.8418, "macro_f1": 0.8429},
+    "distilbert": {"display": "DistilBERT", "accuracy": 0.9107, "macro_f1": 0.9111, "academic_rank": 2},
+    "roberta": {"display": "RoBERTa 🏆", "accuracy": 0.9175, "macro_f1": 0.9177, "academic_rank": 1},  # Academic best
+    "electra": {"display": "ELECTRA", "accuracy": 0.8746, "macro_f1": 0.8761, "academic_rank": 3},
+    "bert": {"display": "BERT", "accuracy": 0.8418, "macro_f1": 0.8429, "academic_rank": 4},
 }
 
-# Set DistilBERT as the default model since it performs better on your specific use case
+# DistilBERT is the default because it performs better on your specific use case
+# Even though RoBERTa has better academic metrics
 DEFAULT_MODEL = "distilbert"
 
 LABELS: list[str] = ["economics", "health", "politics", "sports", "technology"]
@@ -225,6 +228,7 @@ def classify_multiple(text: str, model_keys: list[str] = None) -> dict:
                 "display_name": MODEL_INFO[key]["display"],
                 "accuracy": MODEL_INFO[key]["accuracy"],
                 "macro_f1": MODEL_INFO[key]["macro_f1"],
+                "academic_rank": MODEL_INFO[key].get("academic_rank", 99),
             }
         except Exception as e:
             print(f"Error with model {key}: {e}")
