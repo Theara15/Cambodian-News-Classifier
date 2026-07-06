@@ -101,97 +101,6 @@ def available_models() -> list[str]:
     return models
 
 
-def filter_state_dict(state_dict, model_state_dict, model_key: str):
-    """Filter state dict to only include keys that match the model architecture."""
-    filtered = {}
-    skipped = []
-    shape_mismatch = []
-    
-    # Keys that should be skipped for specific models
-    skip_patterns = {
-        "electra": [
-            "discriminator_predictions",
-            "electra.embeddings_project",
-            "embeddings_project",
-            "discriminator",
-        ],
-        "bert": [
-            "cls.seq_relationship",
-            "cls.predictions",
-            "seq_relationship",
-            "predictions",
-            "cls.",
-            "bert.embeddings.token_type_embeddings",  # BERT specific
-        ],
-        "roberta": [
-            "lm_head",  # RoBERTa LM head
-        ],
-        "distilbert": [
-            "vocab_transform",  # DistilBERT LM head
-            "vocab_layer_norm",
-            "vocab_projector",
-        ],
-    }
-    
-    # Also skip any keys that look like pre-training heads
-    pretraining_patterns = [
-        "predictions",
-        "seq_relationship",
-        "lm_head",
-        "vocab_transform",
-        "vocab_layer_norm",
-        "vocab_projector",
-        "cls.",
-        "mlm",
-        "nsp",
-    ]
-    
-    for key, value in state_dict.items():
-        # Check if this key should be skipped
-        should_skip = False
-        
-        # Check model-specific patterns
-        if model_key in skip_patterns:
-            for pattern in skip_patterns[model_key]:
-                if pattern in key:
-                    should_skip = True
-                    break
-        
-        # Check general pre-training patterns
-        if not should_skip:
-            for pattern in pretraining_patterns:
-                if pattern in key:
-                    should_skip = True
-                    break
-        
-        if should_skip:
-            skipped.append(key)
-            continue
-        
-        # Check if key exists in model
-        if key in model_state_dict:
-            # Check shape match
-            if value.shape == model_state_dict[key].shape:
-                filtered[key] = value
-            else:
-                shape_mismatch.append(f"{key}: {value.shape} vs {model_state_dict[key].shape}")
-                skipped.append(key)
-        else:
-            skipped.append(key)
-    
-    if skipped:
-        print(f"Skipped {len(skipped)} keys for {model_key}")
-        if len(skipped) <= 10:
-            print(f"Skipped keys: {skipped}")
-        else:
-            print(f"Skipped keys: {skipped[:10]}... (and {len(skipped) - 10} more)")
-    
-    if shape_mismatch:
-        print(f"Shape mismatches: {shape_mismatch}")
-    
-    return filtered
-
-
 @lru_cache(maxsize=4)
 def load_model(model_key: str):
     """Load a model with strict=False to handle architecture mismatches."""
@@ -210,40 +119,28 @@ def load_model(model_key: str):
     # Create model with the same architecture used during training
     model = TransformerClassifier(hf_name, num_classes=len(labels)).to(DEVICE)
     
-    # Load the checkpoint
+    # Load the checkpoint with strict=False - this automatically handles:
+    # - UNEXPECTED keys (pre-training heads like cls.predictions.*)
+    # - Missing keys (if any)
     try:
         state_dict = torch.load(ckpt_path, map_location=DEVICE)
         
-        # Get the model's state dict keys
-        model_state_dict = model.state_dict()
-        
-        # Filter the state dict to only include matching keys
-        filtered_state_dict = filter_state_dict(state_dict, model_state_dict, model_key)
-        
-        # Load the filtered state dict
-        model.load_state_dict(filtered_state_dict, strict=False)
-        
+        # First try: load with strict=False (will ignore pre-training head weights)
+        model.load_state_dict(state_dict, strict=False)
         print(f"✅ {model_key} loaded successfully")
         
     except Exception as e:
         print(f"Error loading checkpoint: {e}")
-        # Try loading with strict=False as fallback
+        # Fallback: Try loading only the encoder weights
         try:
-            model.load_state_dict(torch.load(ckpt_path, map_location=DEVICE), strict=False)
-            print(f"✅ {model_key} loaded with strict=False")
+            state_dict = torch.load(ckpt_path, map_location=DEVICE)
+            # Filter to only encoder weights
+            encoder_state = {k: v for k, v in state_dict.items() if not k.startswith("head.")}
+            model.encoder.load_state_dict(encoder_state, strict=False)
+            print(f"✅ {model_key} encoder loaded successfully")
         except Exception as e2:
             print(f"Fallback loading also failed: {e2}")
-            # Try loading just the encoder weights
-            try:
-                # Load only the encoder part
-                state_dict = torch.load(ckpt_path, map_location=DEVICE)
-                encoder_keys = [k for k in state_dict.keys() if not k.startswith("head.")]
-                encoder_state = {k: state_dict[k] for k in encoder_keys}
-                model.encoder.load_state_dict(encoder_state, strict=False)
-                print(f"✅ {model_key} encoder loaded successfully")
-            except Exception as e3:
-                print(f"Encoder-only loading also failed: {e3}")
-                raise
+            raise
     
     model.eval()
     
