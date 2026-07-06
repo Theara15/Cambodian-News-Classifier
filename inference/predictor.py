@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 import sys
 import warnings
+from typing import Dict, List, Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -193,3 +194,108 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
             probs = probs[:len(labels)]
     
     return dict(zip(labels, probs))
+
+
+def classify_ensemble(text: str, model_keys: Optional[List[str]] = None) -> Dict[str, Dict]:
+    """
+    Run classification with multiple models and return ensemble results.
+    
+    Args:
+        text: The input text to classify
+        model_keys: List of model keys to use. If None, uses all available models.
+    
+    Returns:
+        Dictionary with results from each model and ensemble predictions
+    """
+    if model_keys is None:
+        model_keys = available_models()
+    
+    if not model_keys:
+        raise ValueError("No models available for ensemble classification")
+    
+    results = {}
+    all_probs = []
+    
+    for key in model_keys:
+        try:
+            probs = classify(text, key)
+            results[key] = {
+                "probs": probs,
+                "predicted": max(probs, key=probs.get),
+                "confidence": max(probs.values())
+            }
+            all_probs.append(probs)
+        except Exception as e:
+            print(f"Error with model {key}: {e}")
+            continue
+    
+    if not all_probs:
+        raise ValueError("No models could classify the text")
+    
+    # Ensemble: average probabilities
+    ensemble_probs = {}
+    for label in get_labels():
+        ensemble_probs[label] = sum(p[label] for p in all_probs) / len(all_probs)
+    
+    results["ensemble"] = {
+        "probs": ensemble_probs,
+        "predicted": max(ensemble_probs, key=ensemble_probs.get),
+        "confidence": max(ensemble_probs.values()),
+        "models_used": len(all_probs)
+    }
+    
+    # Calculate agreement
+    predictions = [r["predicted"] for r in results.values() if "predicted" in r and r.get("predicted") is not None]
+    if predictions:
+        from collections import Counter
+        agreement = Counter(predictions)
+        results["ensemble"]["agreement"] = {
+            cat: count / len(predictions) for cat, count in agreement.items()
+        }
+        results["ensemble"]["most_agreed"] = max(agreement, key=agreement.get)
+    
+    return results
+
+
+def get_model_confidence_summary(text: str) -> Dict[str, Dict]:
+    """
+    Get detailed confidence information from all models for debugging.
+    
+    Args:
+        text: The input text to classify
+    
+    Returns:
+        Dictionary with detailed classification results from each model
+    """
+    labels = get_labels()
+    results = {}
+    
+    for model_key in available_models():
+        try:
+            probs = classify(text, model_key)
+            predicted = max(probs, key=probs.get)
+            confidence = probs[predicted]
+            
+            # Get the top 3 predictions
+            sorted_probs = sorted(probs.items(), key=lambda x: x[1], reverse=True)
+            top_3 = sorted_probs[:3]
+            
+            # Calculate entropy as a measure of uncertainty
+            import math
+            entropy = -sum(p * math.log(p + 1e-10) for p in probs.values())
+            
+            results[model_key] = {
+                "display_name": MODEL_INFO[model_key]["display"],
+                "predictions": probs,
+                "top_1": (predicted, confidence),
+                "top_3": [(cat, prob) for cat, prob in top_3],
+                "confidence": confidence,
+                "entropy": entropy,
+                "accuracy": MODEL_INFO[model_key]["accuracy"],
+                "macro_f1": MODEL_INFO[model_key]["macro_f1"],
+            }
+        except Exception as e:
+            print(f"Error with model {model_key}: {e}")
+            results[model_key] = {"error": str(e)}
+    
+    return results
