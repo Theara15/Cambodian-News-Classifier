@@ -29,6 +29,8 @@ MAX_LENGTH = 512
 DEVICE = torch.device("cpu")
 
 # Human-friendly names + test-set metrics
+# RoBERTa has the best academic performance (91.75% accuracy)
+# DistilBERT often performs better on individual articles
 MODEL_INFO: dict[str, dict] = {
     "distilbert": {"display": "DistilBERT", "accuracy": 0.9107, "macro_f1": 0.9111, "academic_rank": 2},
     "roberta": {"display": "RoBERTa 🏆", "accuracy": 0.9175, "macro_f1": 0.9177, "academic_rank": 1},
@@ -36,7 +38,9 @@ MODEL_INFO: dict[str, dict] = {
     "bert": {"display": "BERT", "accuracy": 0.8418, "macro_f1": 0.8429, "academic_rank": 4},
 }
 
+# DistilBERT is the default because it performs better on your specific use case
 DEFAULT_MODEL = "distilbert"
+
 LABELS: list[str] = ["economics", "health", "politics", "sports", "technology"]
 
 _MODEL_BACKBONES: dict[str, str] = {
@@ -47,6 +51,8 @@ _MODEL_BACKBONES: dict[str, str] = {
 }
 
 HEAD_SIZE = 512
+MIN_WORDS_FOR_CONFIDENCE = 20
+MIN_CHARS_FOR_CLASSIFICATION = 50
 
 
 def preprocess(text: str) -> str:
@@ -87,6 +93,7 @@ def get_labels() -> list[str]:
 
 
 def available_models() -> list[str]:
+    """Return list of available models with checkpoint files."""
     models = []
     for key in MODEL_INFO:
         ckpt_path = CKPT_DIR / f"{key}_best.pt"
@@ -100,7 +107,7 @@ def filter_state_dict(state_dict, model_state_dict):
     filtered = {}
     skipped = []
     
-    # Patterns to skip (pre-training heads)
+    # Patterns to skip (pre-training heads that we don't need)
     skip_patterns = [
         "cls.predictions",
         "cls.seq_relationship",
@@ -134,7 +141,7 @@ def filter_state_dict(state_dict, model_state_dict):
             skipped.append(key)
     
     if skipped:
-        print(f"Skipped {len(skipped)} keys")
+        print(f"Skipped {len(skipped)} pre-training head keys")
     
     return filtered
 
@@ -178,14 +185,26 @@ def load_model(model_key: str):
 
 
 def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
-    """Classify a text input and return confidence scores for each category."""
+    """
+    Classify a text input and return confidence scores for each category.
+    Returns low confidence scores if text is too short or invalid.
+    """
     labels = get_labels()
     
     # Check if text has enough content
-    if len(text.strip()) < 20:
-        print("Warning: Text is too short for reliable classification")
-        # Return slightly higher confidence for unknown
-        return {label: 0.2 for label in labels}
+    if len(text.strip()) < MIN_CHARS_FOR_CLASSIFICATION:
+        print(f"⚠️ Text too short: {len(text.strip())} characters")
+        # Return near-zero confidence across all categories
+        return {label: 0.01 for label in labels}
+    
+    clean = preprocess(text)
+    
+    # Check word count
+    word_count = len(clean.split())
+    if word_count < MIN_WORDS_FOR_CONFIDENCE:
+        print(f"⚠️ Too few words: {word_count} words")
+        # Return low confidence across all categories
+        return {label: 0.02 for label in labels}
     
     try:
         tokenizer, model = load_model(model_key)
@@ -193,12 +212,7 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
         print(f"Error loading model {model_key}: {e}")
         return {label: 1.0 / len(labels) for label in labels}
 
-    clean = preprocess(text)
-    
-    if len(clean.split()) < 10:
-        print("Warning: Too few words for reliable classification")
-        return {label: 0.2 for label in labels}
-    
+    # Tokenize
     enc = tokenizer(
         clean,
         padding="max_length",
@@ -210,11 +224,14 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
     input_ids = enc["input_ids"].to(DEVICE)
     attention_mask = enc["attention_mask"].to(DEVICE)
 
+    # Run inference
     with torch.no_grad():
         log_probs = model(input_ids, attention_mask)
     
+    # Convert log-probabilities to probabilities
     probs = log_probs.exp().squeeze(0).tolist()
     
+    # Ensure we have the right number of probabilities
     if len(probs) != len(labels):
         print(f"Warning: Expected {len(labels)} probabilities, got {len(probs)}")
         if len(probs) < len(labels):
