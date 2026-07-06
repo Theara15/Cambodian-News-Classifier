@@ -462,7 +462,6 @@ CSS = """
     .filter-section .category-filter {
         min-width: 150px;
     }
-</style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
@@ -625,7 +624,7 @@ def page_classifier() -> None:
                 "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
                 "<ul class=\"feature-list\">"
                 "<li>Supports news text input</li>"
-                "<li>6-category classification model</li>"
+                "<li>5-category classification model</li>"
                 "<li>Confidence scores for all categories</li>"
                 "</ul>"
                 "</div>",
@@ -1154,6 +1153,11 @@ def model_selector() -> None:
             "or tracked with Git LFS."
         )
         return
+    
+    # Filter out models that might cause issues (optional)
+    # If ELECTRA has issues, we can remove it from the list
+    # models = [m for m in models if m != "electra"]
+    
     if st.session_state.model_key not in models:
         st.session_state.model_key = models[0]
     default_idx = models.index(st.session_state.model_key)
@@ -1223,4 +1227,5 @@ def main() -> None:
         page_about()
 
 
-main()
+if __name__ == "__main__":
+    main()
