@@ -59,7 +59,7 @@ CATEGORY_COLORS = {
     "sports": "#f59e0b",
 }
 DEFAULT_COLOR = "#64748b"
-MIN_WORDS = 50
+MIN_WORDS = 20
 
 CSS = """
 <style>
@@ -334,12 +334,45 @@ CSS = """
         background: #f1f5f9;
         color: #111827;
     }
+    .agreement-item.high {background: #dbeafe; color: #1e40af;}
+    .agreement-item.medium {background: #fef3c7; color: #92400e;}
+    .agreement-item.low {background: #fee2e2; color: #991b1b;}
     .model-comparison-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 12px;
         margin: 12px 0;
     }
+    .warning-box {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin: 12px 0;
+    }
+    .warning-box .title {font-weight: 700; color: #92400e; font-size: 14px;}
+    .warning-box .content {color: #78350f; font-size: 13px; line-height: 1.6; margin-top: 4px;}
+    .error-box {
+        background: #fee2e2;
+        border: 1px solid #ef4444;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin: 12px 0;
+    }
+    .error-box .title {font-weight: 700; color: #991b1b; font-size: 14px;}
+    .error-box .content {color: #7f1d1d; font-size: 13px; line-height: 1.6; margin-top: 4px;}
+    .success-box {
+        background: #dcfce7;
+        border: 1px solid #16a34a;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin: 12px 0;
+    }
+    .success-box .title {font-weight: 700; color: #166534; font-size: 14px;}
+    .success-box .content {color: #14532d; font-size: 13px; line-height: 1.6; margin-top: 4px;}
+    .confidence-low {color: #ef4444; font-weight: 700;}
+    .confidence-medium {color: #f59e0b; font-weight: 700;}
+    .confidence-high {color: #16a34a; font-weight: 700;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -395,20 +428,62 @@ def render_header() -> None:
 # --------------------------------------------------------------------------- #
 def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores") -> None:
     ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    
+    # Check if all scores are very low (model is uncertain)
+    max_conf = max(scores.values()) if scores else 0
+    
     parts = [f'<div style="font-weight:700;color:#111827;margin:6px 0 4px;">{title}</div>']
+    
     for cat, prob in ordered:
         pct = prob * 100
         color = _color(cat)
+        
+        # Show bar even for low confidence
         parts.append(f'''
             <div class="bar-row">
                 <div class="bar-name">{cat}</div>
                 <div class="bar-track">
-                    <div class="bar-fill" style="width:{pct:.1f}%;background:{color};"></div>
+                    <div class="bar-fill" style="width:{max(pct, 0.5)}%;background:{color};"></div>
                 </div>
                 <div class="bar-val" style="color:{color};">{pct:.1f}%</div>
             </div>
         ''')
+    
     st.markdown("".join(parts), unsafe_allow_html=True)
+    
+    # Show confidence level indicator
+    if max_conf < 0.3:
+        st.markdown(
+            '<div class="warning-box">'
+            '<div class="title">⚠️ Low Confidence</div>'
+            '<div class="content">'
+            f'The model is uncertain about this text (max confidence: {max_conf*100:.1f}%). '
+            'Try providing more text (50+ words) or using a different article.'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+    elif max_conf < 0.6:
+        st.markdown(
+            f'<div class="warning-box">'
+            '<div class="title">⚠️ Medium Confidence</div>'
+            '<div class="content">'
+            f'The model is moderately confident (max: {max_conf*100:.1f}%). '
+            'Consider using Ensemble Mode for more robust predictions.'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f'<div class="success-box">'
+            '<div class="title">✅ High Confidence</div>'
+            '<div class="content">'
+            f'The model is confident in its prediction (max: {max_conf*100:.1f}%).'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -421,7 +496,6 @@ def render_model_comparison(results: dict) -> None:
         st.warning("No models could classify the text.")
         return
     
-    # Create grid
     st.markdown('<div class="model-comparison-grid">', unsafe_allow_html=True)
     cols = st.columns(min(len(valid_results), 4))
     
@@ -437,8 +511,10 @@ def render_model_comparison(results: dict) -> None:
         
         with cols[idx]:
             border_color = "#16a34a" if is_recommended else color
+            bg_color = "#f0fdf4" if is_recommended else "#f8fafc"
+            
             st.markdown(f"""
-                <div class="model-card" style="border-left:4px solid {border_color}; background: {'#f0fdf4' if is_recommended else '#f8fafc'};">
+                <div class="model-card" style="border-left:4px solid {border_color}; background: {bg_color};">
                     <div class="model-name">
                         {display_name}
                         {' ✅' if is_recommended else ''}
@@ -447,7 +523,7 @@ def render_model_comparison(results: dict) -> None:
                     <div class="model-prediction" style="color:{color};">{pred_cat}</div>
                     <div class="model-confidence">Confidence: {conf*100:.1f}%</div>
                     <div class="model-metrics">
-                        {'✅ Best on this article' if is_recommended and conf > 0.8 else ''}
+                        {'✅ Best on this article' if is_recommended and conf > 0.5 else ''}
                         {'Academic Acc: ' + f"{result.get('accuracy', 0)*100:.1f}%" if not is_recommended else ''}
                     </div>
                 </div>
@@ -571,7 +647,7 @@ def page_classifier() -> None:
             )
             st.session_state.input_text = text
             st.markdown(
-                '<div class="input-hint">Perfect for copied articles or short texts.</div>',
+                f'<div class="input-hint">📝 {words} words detected. Minimum {MIN_WORDS} words recommended.</div>',
                 unsafe_allow_html=True,
             )
 
@@ -592,6 +668,7 @@ def page_classifier() -> None:
                     if extracted:
                         st.session_state.input_text = extracted
                         text = extracted
+                        words = len(text.split())
                         st.success(f"✅ Extracted {len(extracted.split()):,} words from PDF.")
                         st.text_area("Extracted text", value=extracted, height=180)
                 except Exception as e:
@@ -620,14 +697,22 @@ def page_classifier() -> None:
                 else:
                     with st.spinner("Running inference…"):
                         scores = classify(text, st.session_state.model_key)
+                        
+                        # Check if scores are valid
+                        if not scores or max(scores.values()) == 0:
+                            st.error("❌ Model returned no confidence. Please try a different article.")
+                            return
+                        
                         model_display = MODEL_INFO[st.session_state.model_key]["display"]
+                        predicted = max(scores, key=scores.get)
+                        max_conf = max(scores.values())
                         
                         st.session_state.last_result = {
                             "timestamp": datetime.now().isoformat(timespec="seconds"),
                             "model": model_display,
                             "model_key": st.session_state.model_key,
-                            "category": max(scores, key=scores.get),
-                            "confidence": max(scores.values()),
+                            "category": predicted,
+                            "confidence": max_conf,
                             "scores": scores,
                             "chars": len(text),
                             "words": words,
@@ -637,6 +722,8 @@ def page_classifier() -> None:
                         st.session_state.history.insert(0, st.session_state.last_result)
             except Exception as e:
                 st.error(f"Error during classification: {e}")
+                import traceback
+                st.error(f"Traceback: {traceback.format_exc()}")
 
     with right:
         if st.session_state.use_ensemble:
@@ -724,9 +811,20 @@ def page_classifier() -> None:
             cat = result["category"]
             conf = result["confidence"] * 100
             
+            # Determine confidence level class
+            if conf >= 60:
+                conf_class = "confidence-high"
+                emoji = "🟢"
+            elif conf >= 30:
+                conf_class = "confidence-medium"
+                emoji = "🟡"
+            else:
+                conf_class = "confidence-low"
+                emoji = "🔴"
+            
             html_block(f"""
                 <div class="result-head">
-                    <span class="conf-pill">{conf:.1f}% confidence</span>
+                    <span class="conf-pill" style="background:{_color(cat)};">{conf:.1f}% confidence</span>
                     <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
                     <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
                 </div>
@@ -746,7 +844,7 @@ def page_classifier() -> None:
 
             if result["words"] >= MIN_WORDS:
                 st.markdown(
-                    '<p class="ok-note">✅ Text length is optimal for classification</p>',
+                    '<p class="ok-note">✅ Text length is sufficient for classification</p>',
                     unsafe_allow_html=True,
                 )
             else:
@@ -877,10 +975,10 @@ def page_history() -> None:
         color = _color(h["category"])
         conf_pct = h["confidence"] * 100
         
-        if conf_pct >= 80:
+        if conf_pct >= 60:
             conf_color = "#16a34a"
             conf_emoji = "🟢"
-        elif conf_pct >= 60:
+        elif conf_pct >= 30:
             conf_color = "#f59e0b"
             conf_emoji = "🟡"
         else:
@@ -1266,6 +1364,8 @@ def render_sidebar() -> None:
             st.markdown(f"**Active model:** {MODEL_INFO[current]['display']} {'✅' if is_recommended else ''}")
             if is_recommended:
                 st.success("✅ Best in practice")
+            else:
+                st.info("🏆 Academic best")
             st.caption(
                 f"Accuracy {MODEL_INFO[current]['accuracy']*100:.2f}% · "
                 f"Macro-F1 {MODEL_INFO[current]['macro_f1']*100:.2f}% (test set)"
