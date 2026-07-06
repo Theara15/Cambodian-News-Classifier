@@ -14,6 +14,7 @@ from __future__ import annotations
 import io
 import json
 from datetime import datetime
+from collections import Counter
 
 import pandas as pd
 import streamlit as st
@@ -23,6 +24,7 @@ from inference.predictor import (
     MODEL_INFO,
     available_models,
     classify,
+    classify_multiple,
     get_labels,
 )
 
@@ -138,14 +140,6 @@ CSS = """
     }
     .stTextArea textarea::placeholder {color:#6b7280 !important;}
 
-    .page-nav-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 18px;
-        padding: 16px 20px;
-        margin-bottom: 24px;
-    }
-    
     .input-hint {color: #111827; font-size:12px; margin-top:6px;}
     .feature-list {list-style:none; padding-left:0; margin:18px 0 0 0; color:#111827;}
     .feature-list li {margin:10px 0; display:flex; align-items:flex-start; gap:10px; color:#111827;}
@@ -166,7 +160,6 @@ CSS = """
         color: #111827 !important;
     }
     
-    /* Make file uploader button text white */
     .stFileUploader button {
         color: white !important;
         background: #2563eb !important;
@@ -175,7 +168,6 @@ CSS = """
         background: #1e40af !important;
     }
     
-    /* Style for success messages */
     .stAlert {
         color: #111827 !important;
     }
@@ -183,18 +175,15 @@ CSS = """
         color: #111827 !important;
     }
     
-    /* Style for info messages */
     .stAlert[data-baseweb="notification"] {
         color: #111827 !important;
     }
     
-    /* Style for selectbox labels */
     .stSelectbox label {
         color: #111827 !important;
         font-weight: 600 !important;
     }
     
-    /* Style for metrics */
     [data-testid="metric-container"] label {
         color: #111827 !important;
     }
@@ -202,7 +191,6 @@ CSS = """
         color: #111827 !important;
     }
     
-    /* Style for subheaders in About page */
     .stSubheader {
         color: #111827 !important;
         font-weight: 700 !important;
@@ -211,12 +199,10 @@ CSS = """
         margin-bottom: 12px !important;
     }
     
-    /* Style for captions */
     .stCaption {
         color: #111827 !important;
     }
     
-    /* Style for success messages */
     .stSuccess {
         color: #111827 !important;
         background: #f0fdf4 !important;
@@ -226,17 +212,14 @@ CSS = """
         color: #111827 !important;
     }
     
-    /* Style for text input labels */
     .stTextInput label {
         color: #111827 !important;
     }
     
-    /* Style for text area labels */
     .stTextArea label {
         color: #111827 !important;
     }
     
-    /* Style for tabs */
     .stTabs [data-baseweb="tab"] {
         color: #111827 !important;
         font-weight: 600 !important;
@@ -245,7 +228,6 @@ CSS = """
         color: #1d4ed8 !important;
     }
     
-    /* Style for download buttons */
     .stDownloadButton button {
         background: #2563eb !important;
         color: white !important;
@@ -254,7 +236,6 @@ CSS = """
         background: #1e40af !important;
     }
     
-    /* Style for table in About page */
     .stTable {
         color: #111827 !important;
     }
@@ -270,7 +251,6 @@ CSS = """
         color: #111827 !important;
     }
     
-    /* Style for dataframe */
     .stDataFrame {
         color: #111827 !important;
     }
@@ -462,6 +442,100 @@ CSS = """
     .filter-section .category-filter {
         min-width: 150px;
     }
+    
+    /* Model comparison styles */
+    .model-comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .model-card {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 14px 16px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    .model-card:hover {
+        border-color: #93c5fd;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06);
+    }
+    .model-card .model-name {
+        font-weight: 700;
+        font-size: 13px;
+        color: #111827;
+        margin-bottom: 6px;
+    }
+    .model-card .model-prediction {
+        font-size: 18px;
+        font-weight: 800;
+        margin: 4px 0;
+    }
+    .model-card .model-confidence {
+        font-size: 12px;
+        color: #64748b;
+    }
+    .model-card .model-metrics {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+    
+    .ensemble-banner {
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        color: white;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 16px 0;
+    }
+    .ensemble-banner .ensemble-title {
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 4px;
+        opacity: 0.9;
+    }
+    .ensemble-banner .ensemble-prediction {
+        font-size: 28px;
+        font-weight: 800;
+        margin: 4px 0;
+    }
+    .ensemble-banner .ensemble-confidence {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+    .ensemble-banner .ensemble-models {
+        font-size: 12px;
+        opacity: 0.7;
+        margin-top: 4px;
+    }
+    
+    .agreement-bar {
+        display: flex;
+        gap: 8px;
+        margin: 8px 0;
+        flex-wrap: wrap;
+    }
+    .agreement-item {
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #f1f5f9;
+        color: #111827;
+    }
+    .agreement-item.high {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .agreement-item.medium {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .agreement-item.low {
+        background: #fee2e2;
+        color: #991b1b;
+    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -474,8 +548,10 @@ def _init_state() -> None:
     st.session_state.setdefault("page", "Classifier")
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("last_result", None)
+    st.session_state.setdefault("last_multiple_results", None)
     st.session_state.setdefault("input_text", "")
     st.session_state.setdefault("model_key", DEFAULT_MODEL)
+    st.session_state.setdefault("use_ensemble", False)
 
 
 _init_state()
@@ -513,11 +589,10 @@ def render_header() -> None:
 # --------------------------------------------------------------------------- #
 # Confidence bars
 # --------------------------------------------------------------------------- #
-def render_scores(scores: dict[str, float]) -> None:
+def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores") -> None:
     ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
     parts = [
-        '<div style="font-weight:700;color:#111827;margin:6px 0 4px;">'
-        "📊 Confidence Scores</div>"
+        f'<div style="font-weight:700;color:#111827;margin:6px 0 4px;">{title}</div>'
     ]
     for cat, prob in ordered:
         pct = prob * 100
@@ -532,6 +607,131 @@ def render_scores(scores: dict[str, float]) -> None:
             "</div>"
         )
     st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+def render_model_comparison(results: dict) -> None:
+    """Render comparison of all models with their predictions."""
+    st.markdown("### 🤖 Model Comparison")
+    
+    # Filter out errors
+    valid_results = {k: v for k, v in results.items() if "error" not in v}
+    
+    if not valid_results:
+        st.warning("No models could classify the text.")
+        return
+    
+    # Create grid
+    cols = st.columns(min(len(valid_results), 4))
+    
+    for idx, (key, result) in enumerate(valid_results.items()):
+        if idx >= len(cols):
+            break
+        
+        pred_cat = result["predicted"]
+        conf = result["confidence"]
+        color = _color(pred_cat)
+        display_name = result.get("display_name", key)
+        
+        with cols[idx]:
+            st.markdown(
+                f"""
+                <div class="model-card" style="border-left:4px solid {color};">
+                    <div class="model-name">{display_name}</div>
+                    <div class="model-prediction" style="color:{color};">
+                        {pred_cat}
+                    </div>
+                    <div class="model-confidence">
+                        Confidence: {conf*100:.1f}%
+                    </div>
+                    <div class="model-metrics">
+                        Acc: {result.get('accuracy', 0)*100:.1f}% · 
+                        F1: {result.get('macro_f1', 0)*100:.1f}%
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            # Show top 3 predictions for this model
+            with st.expander(f"Top 3 for {display_name}"):
+                sorted_probs = sorted(result["probs"].items(), key=lambda x: x[1], reverse=True)
+                for cat, prob in sorted_probs[:3]:
+                    pct = prob * 100
+                    c = _color(cat)
+                    st.markdown(
+                        f"""
+                        <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;">
+                            <span style="color:{c};font-weight:600;">{cat}</span>
+                            <span>{pct:.1f}%</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+
+def render_ensemble_results(results: dict) -> None:
+    """Render ensemble prediction results."""
+    valid_results = {k: v for k, v in results.items() if "error" not in v}
+    
+    if len(valid_results) < 2:
+        st.info("Need at least 2 models for ensemble prediction.")
+        return
+    
+    # Calculate ensemble by averaging probabilities
+    ensemble_probs = {}
+    for label in get_labels():
+        ensemble_probs[label] = sum(r["probs"][label] for r in valid_results.values()) / len(valid_results)
+    
+    pred = max(ensemble_probs, key=ensemble_probs.get)
+    conf = ensemble_probs[pred]
+    color = _color(pred)
+    
+    # Calculate agreement
+    predictions = [r["predicted"] for r in valid_results.values()]
+    agreement = Counter(predictions)
+    most_agreed = max(agreement, key=agreement.get)
+    agreement_pct = agreement[most_agreed] / len(predictions)
+    
+    st.markdown(
+        f"""
+        <div class="ensemble-banner">
+            <div class="ensemble-title">🎯 Ensemble Prediction ({len(valid_results)} models)</div>
+            <div class="ensemble-prediction" style="color:white;">{pred}</div>
+            <div class="ensemble-confidence">Confidence: {conf*100:.1f}%</div>
+            <div class="ensemble-models">
+                🤝 Most agreed: {most_agreed} ({agreement_pct*100:.0f}% of models)
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Show agreement breakdown
+    st.markdown("**Model Agreement:**")
+    agreement_html = '<div class="agreement-bar">'
+    for cat, count in agreement.items():
+        pct = count / len(predictions)
+        if pct >= 0.5:
+            cls = "high"
+        elif pct >= 0.25:
+            cls = "medium"
+        else:
+            cls = "low"
+        agreement_html += f'<span class="agreement-item {cls}" style="border-left:3px solid {_color(cat)};">{cat}: {count}/{len(predictions)}</span>'
+    agreement_html += '</div>'
+    st.markdown(agreement_html, unsafe_allow_html=True)
+    
+    # Show ensemble confidence scores
+    render_scores(ensemble_probs, "📊 Ensemble Confidence Scores")
+    
+    # Store ensemble result for history
+    return {
+        "predicted": pred,
+        "confidence": conf,
+        "probs": ensemble_probs,
+        "models_used": len(valid_results),
+        "agreement": dict(agreement)
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -555,7 +755,19 @@ def page_classifier() -> None:
             """
         )
 
-        model_selector()
+        # Model selection mode
+        col_mode, col_model = st.columns([1, 2])
+        with col_mode:
+            use_ensemble = st.checkbox(
+                "🎯 Ensemble Mode",
+                value=st.session_state.use_ensemble,
+                help="Use all available models and combine their predictions"
+            )
+            st.session_state.use_ensemble = use_ensemble
+        
+        with col_model:
+            if not use_ensemble:
+                model_selector()
 
         tab_text, tab_pdf = st.tabs(["Direct Text Entry", "PDF Upload"])
         with tab_text:
@@ -599,92 +811,167 @@ def page_classifier() -> None:
                     f"⚠️ Only {words} words detected. {MIN_WORDS}+ words give more "
                     "reliable results, but classifying anyway."
                 )
-            with st.spinner("Running inference…"):
-                scores = classify(text, st.session_state.model_key)
-            top_cat = max(scores, key=scores.get)
-            result = {
-                "timestamp": datetime.now().isoformat(timespec="seconds"),
-                "model": MODEL_INFO[st.session_state.model_key]["display"],
-                "category": top_cat,
-                "confidence": scores[top_cat],
-                "scores": scores,
-                "chars": len(text),
-                "words": words,
-                "preview": text.strip().replace("\n", " ")[:160],
-            }
-            st.session_state.last_result = result
-            st.session_state.history.insert(0, result)
+            
+            if st.session_state.use_ensemble:
+                with st.spinner("Running ensemble inference on all models…"):
+                    results = classify_multiple(text)
+                    st.session_state.last_multiple_results = results
+                    st.session_state.last_result = None
+            else:
+                with st.spinner("Running inference…"):
+                    scores = classify(text, st.session_state.model_key)
+                    st.session_state.last_result = {
+                        "timestamp": datetime.now().isoformat(timespec="seconds"),
+                        "model": MODEL_INFO[st.session_state.model_key]["display"],
+                        "category": max(scores, key=scores.get),
+                        "confidence": max(scores.values()),
+                        "scores": scores,
+                        "chars": len(text),
+                        "words": words,
+                        "preview": text.strip().replace("\n", " ")[:160],
+                    }
+                    st.session_state.last_multiple_results = None
+                    st.session_state.history.insert(0, st.session_state.last_result)
 
     with right:
-        result = st.session_state.last_result
-        if result is None:
-            st.markdown(
-                '<div class="card placeholder-card">'
-                "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
-                "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
-                "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
-                "<ul class=\"feature-list\">"
-                "<li>Supports news text input</li>"
-                "<li>6-category classification model</li>"
-                "<li>Confidence scores for all categories</li>"
-                "</ul>"
-                "</div>",
-                unsafe_allow_html=True,
-            )
-            return
-
-        cat = result["category"]
-        conf = result["confidence"] * 100
-        html_block(
-            f"""
-            <div class="result-head">
-              <span class="conf-pill">{conf:.1f}% confidence</span>
-              <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
-              <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
-            </div>
-            """
-        )
-
-        c1, c2 = st.columns(2)
-        c1.markdown(
-            f'<div class="stat-box"><div class="stat-num">{result["chars"]:,}</div>'
-            '<div class="stat-lab">Characters</div></div>',
-            unsafe_allow_html=True,
-        )
-        c2.markdown(
-            f'<div class="stat-box"><div class="stat-num">{result["words"]:,}</div>'
-            '<div class="stat-lab">Words</div></div>',
-            unsafe_allow_html=True,
-        )
-
-        if result["words"] >= MIN_WORDS:
-            st.markdown(
-                '<p class="ok-note">✅ Text length is optimal for classification</p>',
-                unsafe_allow_html=True,
-            )
+        if st.session_state.use_ensemble:
+            results = st.session_state.last_multiple_results
+            if results is None:
+                st.markdown(
+                    '<div class="card placeholder-card">'
+                    "<div style=\"font-size:48px;line-height:1;\">🎯</div>"
+                    "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ensemble Mode Active</div>"
+                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">"
+                    "All models will run simultaneously and their predictions will be combined."
+                    "</div>"
+                    "<ul class=\"feature-list\">"
+                    "<li>Uses all available models</li>"
+                    "<li>Shows model agreement</li>"
+                    "<li>Ensemble prediction is more robust</li>"
+                    "</ul>"
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                # Show model comparison
+                render_model_comparison(results)
+                
+                # Show ensemble results
+                ensemble_result = render_ensemble_results(results)
+                
+                # Store ensemble result in history if not already stored
+                if ensemble_result and not any(
+                    h.get("is_ensemble", False) for h in st.session_state.history[:1]
+                ):
+                    history_entry = {
+                        "timestamp": datetime.now().isoformat(timespec="seconds"),
+                        "model": "Ensemble",
+                        "category": ensemble_result["predicted"],
+                        "confidence": ensemble_result["confidence"],
+                        "scores": ensemble_result["probs"],
+                        "chars": len(text),
+                        "words": words,
+                        "preview": text.strip().replace("\n", " ")[:160],
+                        "is_ensemble": True,
+                        "models_used": ensemble_result["models_used"],
+                        "agreement": ensemble_result["agreement"],
+                    }
+                    st.session_state.history.insert(0, history_entry)
+                
+                # Export button
+                if st.button("📥 Export Results", use_container_width=True):
+                    export_data = {
+                        "timestamp": datetime.now().isoformat(),
+                        "text_preview": text[:500],
+                        "ensemble": ensemble_result,
+                        "individual_models": {
+                            k: {
+                                "predicted": v["predicted"],
+                                "confidence": v["confidence"],
+                                "scores": v["probs"]
+                            }
+                            for k, v in results.items() if "error" not in v
+                        }
+                    }
+                    st.download_button(
+                        "⬇ Download JSON",
+                        data=json.dumps(export_data, indent=2),
+                        file_name=f"ensemble_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json",
+                        use_container_width=True,
+                    )
+        
         else:
-            st.markdown(
-                '<p class="warn-note">⚠️ Short text — prediction may be less reliable</p>',
+            # Single model mode
+            result = st.session_state.last_result
+            if result is None:
+                st.markdown(
+                    '<div class="card placeholder-card">'
+                    "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
+                    "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
+                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">Paste text or upload a PDF, then use the button below to see the predicted category and confidence scores.</div>"
+                    "<ul class=\"feature-list\">"
+                    "<li>Supports news text input</li>"
+                    "<li>5-category classification model</li>"
+                    "<li>Confidence scores for all categories</li>"
+                    "</ul>"
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+                return
+
+            cat = result["category"]
+            conf = result["confidence"] * 100
+            html_block(
+                f"""
+                <div class="result-head">
+                  <span class="conf-pill">{conf:.1f}% confidence</span>
+                  <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
+                  <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
+                </div>
+                """
+            )
+
+            c1, c2 = st.columns(2)
+            c1.markdown(
+                f'<div class="stat-box"><div class="stat-num">{result["chars"]:,}</div>'
+                '<div class="stat-lab">Characters</div></div>',
+                unsafe_allow_html=True,
+            )
+            c2.markdown(
+                f'<div class="stat-box"><div class="stat-num">{result["words"]:,}</div>'
+                '<div class="stat-lab">Words</div></div>',
                 unsafe_allow_html=True,
             )
 
-        render_scores(result["scores"])
-        st.caption(f"Model: {result['model']}")
+            if result["words"] >= MIN_WORDS:
+                st.markdown(
+                    '<p class="ok-note">✅ Text length is optimal for classification</p>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<p class="warn-note">⚠️ Short text — prediction may be less reliable</p>',
+                    unsafe_allow_html=True,
+                )
 
-        e1, e2 = st.columns(2)
-        with e1:
-            st.download_button(
-                "⬇ Export",
-                data=json.dumps(result, indent=2),
-                file_name=f"classification_{result['timestamp'].replace(':', '-')}.json",
-                mime="application/json",
-                use_container_width=True,
-            )
-        with e2:
-            if st.button("🗑 Clear", use_container_width=True):
-                st.session_state.last_result = None
-                st.session_state.input_text = ""
-                st.rerun()
+            render_scores(result["scores"])
+            st.caption(f"Model: {result['model']}")
+
+            e1, e2 = st.columns(2)
+            with e1:
+                st.download_button(
+                    "⬇ Export",
+                    data=json.dumps(result, indent=2),
+                    file_name=f"classification_{result['timestamp'].replace(':', '-')}.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+            with e2:
+                if st.button("🗑 Clear", use_container_width=True):
+                    st.session_state.last_result = None
+                    st.session_state.input_text = ""
+                    st.rerun()
 
 
 def _read_pdf(uploaded) -> str:
@@ -705,12 +992,11 @@ def _read_pdf(uploaded) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Session history page - Redesigned
+# Session history page
 # --------------------------------------------------------------------------- #
 def page_history() -> None:
     history = st.session_state.history
     
-    # Header
     st.markdown(
         """
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
@@ -737,7 +1023,6 @@ def page_history() -> None:
     cats = [h["category"] for h in history]
     top_cat = max(set(cats), key=cats.count)
     
-    # Create stats grid
     st.markdown(
         f"""
         <div class="history-stats">
@@ -799,9 +1084,8 @@ def page_history() -> None:
             continue
         rows.append(h)
     
-    # Sort
     if sort_by == "Most Recent":
-        rows = rows  # Already in reverse chronological order
+        rows = rows
     elif sort_by == "Oldest First":
         rows = list(reversed(rows))
     elif sort_by == "Highest Confidence":
@@ -809,7 +1093,6 @@ def page_history() -> None:
     elif sort_by == "Lowest Confidence":
         rows = sorted(rows, key=lambda x: x["confidence"])
 
-    # Results count
     st.markdown(
         f"""
         <div style="margin:12px 0 16px 0;color:#64748b;font-size:13px;">
@@ -819,21 +1102,22 @@ def page_history() -> None:
         unsafe_allow_html=True,
     )
 
-    # Display items
     for h in rows:
         color = _color(h["category"])
         conf_pct = h["confidence"] * 100
         
-        # Determine confidence level color
         if conf_pct >= 80:
-            conf_color = "#16a34a"  # Green - high confidence
+            conf_color = "#16a34a"
             conf_emoji = "🟢"
         elif conf_pct >= 60:
-            conf_color = "#f59e0b"  # Yellow - medium confidence
+            conf_color = "#f59e0b"
             conf_emoji = "🟡"
         else:
-            conf_color = "#ef4444"  # Red - low confidence
+            conf_color = "#ef4444"
             conf_emoji = "🔴"
+        
+        # Show ensemble badge if applicable
+        ensemble_badge = ' 🎯 Ensemble' if h.get('is_ensemble', False) else ''
         
         st.markdown(
             f"""
@@ -847,9 +1131,9 @@ def page_history() -> None:
                         <span class="confidence-bar-mini">
                             <span class="fill" style="width:{conf_pct:.1f}%;background:{conf_color};"></span>
                         </span>
+                        <span style="font-size:11px;color:#64748b;">{h['model']}{ensemble_badge}</span>
                     </div>
                     <div class="meta-info">
-                        <span>🤖 {h['model']}</span>
                         <span>📝 {h['words']:,} words</span>
                         <span>🕐 {h['timestamp']}</span>
                     </div>
@@ -873,6 +1157,7 @@ def page_history() -> None:
                 "words": h["words"],
                 "chars": h["chars"],
                 "preview": h["preview"],
+                "ensemble": h.get("is_ensemble", False),
             }
             for h in history
         ]
@@ -894,12 +1179,11 @@ def page_history() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# About page - Redesigned with RoBERTa/DistilBERT note
+# About page
 # --------------------------------------------------------------------------- #
 def page_about() -> None:
     labels = get_labels()
     
-    # Header section
     st.markdown(
         """
         <div style="text-align:center;margin-bottom:20px;">
@@ -915,7 +1199,6 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    # Quick stats grid
     st.markdown(
         """
         <div class="about-grid">
@@ -935,16 +1218,15 @@ def page_about() -> None:
                 <div class="desc">RoBERTa — 91.75%</div>
             </div>
             <div class="about-grid-item">
-                <div class="icon">📊</div>
-                <div class="label">Balanced Dataset</div>
-                <div class="desc">Undersampling · No Environment Class</div>
+                <div class="icon">🎯</div>
+                <div class="label">Ensemble Mode</div>
+                <div class="desc">Combine all models for robust predictions</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
     
-    # Description
     st.markdown(
         """
         <div style="background:#f8fafc;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;margin:12px 0;">
@@ -959,7 +1241,6 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    # Model Performance
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
@@ -969,11 +1250,10 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    # Create a styled dataframe for model performance
     model_data = []
     for key, info in MODEL_INFO.items():
         is_available = key in available_models()
-        is_best = key == "roberta"  # RoBERTa is the best performer
+        is_best = key == "roberta"
         model_data.append({
             "Model": info["display"],
             "Accuracy": f"{info['accuracy']*100:.2f}%",
@@ -996,7 +1276,6 @@ def page_about() -> None:
         }
     )
     
-    # Recommendation with RoBERTa/DistilBERT note
     st.markdown(
         """
         <div style="background:#dbeafe;border-radius:12px;padding:16px 20px;border:1px solid #93c5fd;margin:12px 0;">
@@ -1008,16 +1287,14 @@ def page_about() -> None:
                 highest accuracy (91.75%) and macro-F1 (91.77%) on the balanced dataset.
             </div>
             <div style="color:#1e3a8a;font-size:13px;line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid #93c5fd;">
-                💡 <strong>Note:</strong> <strong>DistilBERT</strong> can still look better on one input because 
-                confidence varies sample by sample. The model with the best test-set metrics 
-                may not always produce the highest confidence for every individual article.
+                💡 <strong>Note:</strong> Different models may perform better on different articles.
+                Use <strong>Ensemble Mode</strong> to combine all models for more robust predictions.
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
     
-    # Pipeline section
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
@@ -1032,8 +1309,7 @@ def page_about() -> None:
         <div class="about-section">
             <div class="title">1. Preprocess</div>
             <div class="content">
-                Lowercase, strip HTML / URLs / emails / digits, drop stop-words 
-                (identical to training, via <code>preprocessing.clean.preprocess</code>)
+                Lowercase, strip HTML / URLs / emails / digits, drop stop-words
             </div>
         </div>
         <div class="about-section">
@@ -1049,7 +1325,13 @@ def page_about() -> None:
             </div>
         </div>
         <div class="about-section">
-            <div class="title">4. Report</div>
+            <div class="title">4. Ensemble (Optional)</div>
+            <div class="content">
+                Average probabilities from all models for more robust predictions
+            </div>
+        </div>
+        <div class="about-section">
+            <div class="title">5. Report</div>
             <div class="content">
                 <code>exp()</code> of log-probabilities gives the confidence scores shown in the dashboard
             </div>
@@ -1058,7 +1340,6 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    # Categories section
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
@@ -1068,7 +1349,6 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    # Category chips
     cat_cols = st.columns(5)
     for idx, cat in enumerate(labels):
         color = _color(cat)
@@ -1098,7 +1378,6 @@ def page_about() -> None:
         "from the corpus, leaving five balanced-enough categories."
     )
     
-    # Known limitations
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
@@ -1130,7 +1409,6 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    # Footer
     st.markdown(
         """
         <div style="text-align:center;color:#94a3b8;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;">
@@ -1142,16 +1420,14 @@ def page_about() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Model selector (on-page) + sidebar + routing
+# Model selector
 # --------------------------------------------------------------------------- #
 def model_selector() -> None:
-    """On-page transformer picker bound to ``st.session_state.model_key``."""
     models = available_models()
     if not models:
         st.error(
             "No checkpoints found in models/undersampling_no_environment/. "
-            "Make sure the fine-tuned .pt weights are included in your deployment "
-            "or tracked with Git LFS."
+            "Make sure the fine-tuned .pt weights are included in your deployment."
         )
         return
     if st.session_state.model_key not in models:
@@ -1166,8 +1442,7 @@ def model_selector() -> None:
             f"Acc {MODEL_INFO[k]['accuracy']*100:.1f}% / F1 {MODEL_INFO[k]['macro_f1']*100:.1f}%"
         ),
         key="model_select",
-        help="Pick which fine-tuned encoder runs the classification. "
-        "RoBERTa is the best performer.",
+        help="Pick which fine-tuned encoder runs the classification.",
     )
     st.session_state.model_key = choice
 
@@ -1185,12 +1460,14 @@ def render_sidebar() -> None:
         st.caption("Switch models from the dropdown on the Classifier page.")
         st.divider()
         st.caption("Corpus: undersampling_no_environment · 5 classes · max_length 512")
+        if st.session_state.use_ensemble:
+            st.success("🎯 Ensemble Mode: ON")
+            st.caption("Using all available models")
 
 
 def main() -> None:
     render_header()
     
-    # Custom navigation using columns with buttons
     col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
@@ -1223,4 +1500,5 @@ def main() -> None:
         page_about()
 
 
-main()
+if __name__ == "__main__":
+    main()
