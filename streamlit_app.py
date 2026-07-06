@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from collections import Counter
 
-# Force CPU and disable memory caching to prevent OOM errors
+# Force CPU and disable memory caching
 os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
@@ -370,9 +370,6 @@ CSS = """
     }
     .success-box .title {font-weight: 700; color: #166534; font-size: 14px;}
     .success-box .content {color: #14532d; font-size: 13px; line-height: 1.6; margin-top: 4px;}
-    .confidence-low {color: #ef4444; font-weight: 700;}
-    .confidence-medium {color: #f59e0b; font-weight: 700;}
-    .confidence-high {color: #16a34a; font-weight: 700;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -429,7 +426,6 @@ def render_header() -> None:
 def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores") -> None:
     ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
     
-    # Check if all scores are very low (model is uncertain)
     max_conf = max(scores.values()) if scores else 0
     
     parts = [f'<div style="font-weight:700;color:#111827;margin:6px 0 4px;">{title}</div>']
@@ -438,12 +434,14 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
         pct = prob * 100
         color = _color(cat)
         
-        # Show bar even for low confidence
+        # Always show at least 0.5% bar width for visibility
+        bar_width = max(pct, 0.5)
+        
         parts.append(f'''
             <div class="bar-row">
                 <div class="bar-name">{cat}</div>
                 <div class="bar-track">
-                    <div class="bar-fill" style="width:{max(pct, 0.5)}%;background:{color};"></div>
+                    <div class="bar-fill" style="width:{bar_width}%;background:{color};"></div>
                 </div>
                 <div class="bar-val" style="color:{color};">{pct:.1f}%</div>
             </div>
@@ -454,34 +452,43 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
     # Show confidence level indicator
     if max_conf < 0.3:
         st.markdown(
-            '<div class="warning-box">'
-            '<div class="title">⚠️ Low Confidence</div>'
-            '<div class="content">'
-            f'The model is uncertain about this text (max confidence: {max_conf*100:.1f}%). '
-            'Try providing more text (50+ words) or using a different article.'
-            '</div>'
-            '</div>',
+            f'''
+            <div class="warning-box">
+                <div class="title">⚠️ Low Confidence ({max_conf*100:.1f}%)</div>
+                <div class="content">
+                    The model is uncertain about this text. This usually happens when:
+                    <ul style="margin:8px 0 0 20px;padding:0;">
+                        <li>Text is too short (needs 50+ words)</li>
+                        <li>Text is not in English</li>
+                        <li>Text doesn't match any of the 5 categories</li>
+                    </ul>
+                    <br>
+                    <strong>Try:</strong> Add more text, use English content, or try a different article.
+                </div>
+            </div>
+            ''',
             unsafe_allow_html=True
         )
     elif max_conf < 0.6:
         st.markdown(
-            f'<div class="warning-box">'
-            '<div class="title">⚠️ Medium Confidence</div>'
-            '<div class="content">'
-            f'The model is moderately confident (max: {max_conf*100:.1f}%). '
-            'Consider using Ensemble Mode for more robust predictions.'
-            '</div>'
-            '</div>',
+            f'''
+            <div class="warning-box">
+                <div class="title">⚠️ Medium Confidence ({max_conf*100:.1f}%)</div>
+                <div class="content">
+                    The model is moderately confident. Consider using Ensemble Mode for more robust predictions.
+                </div>
+            </div>
+            ''',
             unsafe_allow_html=True
         )
     else:
         st.markdown(
-            f'<div class="success-box">'
-            '<div class="title">✅ High Confidence</div>'
-            '<div class="content">'
-            f'The model is confident in its prediction (max: {max_conf*100:.1f}%).'
-            '</div>'
-            '</div>',
+            f'''
+            <div class="success-box">
+                <div class="title">✅ High Confidence ({max_conf*100:.1f}%)</div>
+                <div class="content">The model is confident in its prediction.</div>
+            </div>
+            ''',
             unsafe_allow_html=True
         )
 
@@ -647,7 +654,7 @@ def page_classifier() -> None:
             )
             st.session_state.input_text = text
             st.markdown(
-                f'<div class="input-hint">📝 {words} words detected. Minimum {MIN_WORDS} words recommended.</div>',
+                f'<div class="input-hint">📝 {words} words detected. Minimum {MIN_WORDS} words recommended for reliable results.</div>',
                 unsafe_allow_html=True,
             )
 
@@ -717,6 +724,7 @@ def page_classifier() -> None:
                             "chars": len(text),
                             "words": words,
                             "preview": text.strip().replace("\n", " ")[:160],
+                            "is_low_confidence": max_conf < 0.3,
                         }
                         st.session_state.last_multiple_results = None
                         st.session_state.history.insert(0, st.session_state.last_result)
@@ -810,17 +818,6 @@ def page_classifier() -> None:
 
             cat = result["category"]
             conf = result["confidence"] * 100
-            
-            # Determine confidence level class
-            if conf >= 60:
-                conf_class = "confidence-high"
-                emoji = "🟢"
-            elif conf >= 30:
-                conf_class = "confidence-medium"
-                emoji = "🟡"
-            else:
-                conf_class = "confidence-low"
-                emoji = "🔴"
             
             html_block(f"""
                 <div class="result-head">
@@ -986,6 +983,7 @@ def page_history() -> None:
             conf_emoji = "🔴"
         
         ensemble_badge = ' 🎯 Ensemble' if h.get('is_ensemble', False) else ''
+        low_conf_badge = ' ⚠️ Low Confidence' if h.get('is_low_confidence', False) else ''
         
         st.markdown(f"""
             <div class="history-item">
@@ -998,7 +996,7 @@ def page_history() -> None:
                         <span class="confidence-bar-mini">
                             <span class="fill" style="width:{conf_pct:.1f}%;background:{conf_color};"></span>
                         </span>
-                        <span style="font-size:11px;color:#64748b;">{h['model']}{ensemble_badge}</span>
+                        <span style="font-size:11px;color:#64748b;">{h['model']}{ensemble_badge}{low_conf_badge}</span>
                     </div>
                     <div class="meta-info">
                         <span>📝 {h['words']:,} words</span>
@@ -1022,6 +1020,7 @@ def page_history() -> None:
                 "chars": h["chars"],
                 "preview": h["preview"],
                 "ensemble": h.get("is_ensemble", False),
+                "low_confidence": h.get("is_low_confidence", False),
             }
             for h in history
         ]
