@@ -11,16 +11,19 @@ from functools import lru_cache
 from pathlib import Path
 import sys
 import warnings
-from typing import Dict, List, Tuple, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 
-# Suppress warnings about UNEXPECTED keys
+# Suppress ALL warnings about UNEXPECTED keys
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Also suppress the specific PyTorch warning about missing/unexpected keys
+import logging
+logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 
 APP_DIR = Path(__file__).resolve().parents[1]
 CKPT_DIR = APP_DIR / "models" / "undersampling_no_environment"
@@ -115,20 +118,18 @@ def load_model(model_key: str):
     if not ckpt_path.is_file():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
-    print(f"Loading {model_key} from {ckpt_path}...")
-    
     # Create model with the same architecture used during training
     model = TransformerClassifier(hf_name, num_classes=len(labels)).to(DEVICE)
     
-    # Load the checkpoint with strict=False - this automatically handles:
-    # - UNEXPECTED keys (pre-training heads like cls.predictions.*)
-    # - Missing keys (if any)
+    # Load the checkpoint with strict=False
+    # This automatically ignores UNEXPECTED keys (pre-training heads)
+    # and handles missing keys gracefully
     try:
         state_dict = torch.load(ckpt_path, map_location=DEVICE)
         
-        # First try: load with strict=False (will ignore pre-training head weights)
+        # Load with strict=False - this is the key fix that handles all UNEXPECTED keys
+        # The warnings are suppressed by the filters at the top
         model.load_state_dict(state_dict, strict=False)
-        print(f"✅ {model_key} loaded successfully")
         
     except Exception as e:
         print(f"Error loading checkpoint: {e}")
@@ -138,7 +139,6 @@ def load_model(model_key: str):
             # Filter to only encoder weights
             encoder_state = {k: v for k, v in state_dict.items() if not k.startswith("head.")}
             model.encoder.load_state_dict(encoder_state, strict=False)
-            print(f"✅ {model_key} encoder loaded successfully")
         except Exception as e2:
             print(f"Fallback loading also failed: {e2}")
             raise
@@ -196,25 +196,24 @@ def classify(text: str, model_key: str = DEFAULT_MODEL) -> dict[str, float]:
     return dict(zip(labels, probs))
 
 
-def classify_ensemble(text: str, model_keys: Optional[List[str]] = None) -> Dict[str, Dict]:
+def classify_multiple(text: str, model_keys: list[str] = None) -> dict:
     """
-    Run classification with multiple models and return ensemble results.
+    Run classification with multiple models and return all results.
     
     Args:
         text: The input text to classify
         model_keys: List of model keys to use. If None, uses all available models.
     
     Returns:
-        Dictionary with results from each model and ensemble predictions
+        Dictionary with results from each model
     """
     if model_keys is None:
         model_keys = available_models()
     
     if not model_keys:
-        raise ValueError("No models available for ensemble classification")
+        raise ValueError("No models available for classification")
     
     results = {}
-    all_probs = []
     
     for key in model_keys:
         try:
@@ -222,80 +221,13 @@ def classify_ensemble(text: str, model_keys: Optional[List[str]] = None) -> Dict
             results[key] = {
                 "probs": probs,
                 "predicted": max(probs, key=probs.get),
-                "confidence": max(probs.values())
+                "confidence": max(probs.values()),
+                "display_name": MODEL_INFO[key]["display"],
+                "accuracy": MODEL_INFO[key]["accuracy"],
+                "macro_f1": MODEL_INFO[key]["macro_f1"],
             }
-            all_probs.append(probs)
         except Exception as e:
             print(f"Error with model {key}: {e}")
-            continue
-    
-    if not all_probs:
-        raise ValueError("No models could classify the text")
-    
-    # Ensemble: average probabilities
-    ensemble_probs = {}
-    for label in get_labels():
-        ensemble_probs[label] = sum(p[label] for p in all_probs) / len(all_probs)
-    
-    results["ensemble"] = {
-        "probs": ensemble_probs,
-        "predicted": max(ensemble_probs, key=ensemble_probs.get),
-        "confidence": max(ensemble_probs.values()),
-        "models_used": len(all_probs)
-    }
-    
-    # Calculate agreement
-    predictions = [r["predicted"] for r in results.values() if "predicted" in r and r.get("predicted") is not None]
-    if predictions:
-        from collections import Counter
-        agreement = Counter(predictions)
-        results["ensemble"]["agreement"] = {
-            cat: count / len(predictions) for cat, count in agreement.items()
-        }
-        results["ensemble"]["most_agreed"] = max(agreement, key=agreement.get)
-    
-    return results
-
-
-def get_model_confidence_summary(text: str) -> Dict[str, Dict]:
-    """
-    Get detailed confidence information from all models for debugging.
-    
-    Args:
-        text: The input text to classify
-    
-    Returns:
-        Dictionary with detailed classification results from each model
-    """
-    labels = get_labels()
-    results = {}
-    
-    for model_key in available_models():
-        try:
-            probs = classify(text, model_key)
-            predicted = max(probs, key=probs.get)
-            confidence = probs[predicted]
-            
-            # Get the top 3 predictions
-            sorted_probs = sorted(probs.items(), key=lambda x: x[1], reverse=True)
-            top_3 = sorted_probs[:3]
-            
-            # Calculate entropy as a measure of uncertainty
-            import math
-            entropy = -sum(p * math.log(p + 1e-10) for p in probs.values())
-            
-            results[model_key] = {
-                "display_name": MODEL_INFO[model_key]["display"],
-                "predictions": probs,
-                "top_1": (predicted, confidence),
-                "top_3": [(cat, prob) for cat, prob in top_3],
-                "confidence": confidence,
-                "entropy": entropy,
-                "accuracy": MODEL_INFO[model_key]["accuracy"],
-                "macro_f1": MODEL_INFO[model_key]["macro_f1"],
-            }
-        except Exception as e:
-            print(f"Error with model {model_key}: {e}")
-            results[model_key] = {"error": str(e)}
+            results[key] = {"error": str(e)}
     
     return results
