@@ -7,7 +7,6 @@ Run from the project root:
 
 from __future__ import annotations
 
-import io
 import json
 import sys
 import os
@@ -15,17 +14,17 @@ from datetime import datetime
 from pathlib import Path
 from collections import Counter
 
-# Force CPU and disable memory caching
+# Force CPU
 os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import pandas as pd
 import streamlit as st
 
-# Add the project root to path
+# Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# Try to import the predictor with error handling
+# Try to import predictor
 try:
     from inference.predictor import (
         DEFAULT_MODEL,
@@ -50,7 +49,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Per-category accent colours
+# Category colours
 CATEGORY_COLORS = {
     "politics": "#7c3aed",
     "technology": "#10b981",
@@ -352,15 +351,6 @@ CSS = """
     }
     .warning-box .title {font-weight: 700; color: #92400e; font-size: 14px;}
     .warning-box .content {color: #78350f; font-size: 13px; line-height: 1.6; margin-top: 4px;}
-    .error-box {
-        background: #fee2e2;
-        border: 1px solid #ef4444;
-        border-radius: 12px;
-        padding: 14px 18px;
-        margin: 12px 0;
-    }
-    .error-box .title {font-weight: 700; color: #991b1b; font-size: 14px;}
-    .error-box .content {color: #7f1d1d; font-size: 13px; line-height: 1.6; margin-top: 4px;}
     .success-box {
         background: #dcfce7;
         border: 1px solid #16a34a;
@@ -370,6 +360,22 @@ CSS = """
     }
     .success-box .title {font-weight: 700; color: #166534; font-size: 14px;}
     .success-box .content {color: #14532d; font-size: 13px; line-height: 1.6; margin-top: 4px;}
+    .sample-box {
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin: 12px 0;
+    }
+    .sample-box .title {font-weight: 700; color: #0369a1; font-size: 14px;}
+    .sample-box .content {color: #0c4a6e; font-size: 13px; line-height: 1.6; margin-top: 4px;}
+    .sample-box code {
+        background: #e0f2fe;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #0369a1;
+    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -389,6 +395,7 @@ def _init_state() -> None:
     else:
         st.session_state.setdefault("model_key", "distilbert")
     st.session_state.setdefault("use_ensemble", False)
+    st.session_state.setdefault("show_sample", False)
 
 
 _init_state()
@@ -434,7 +441,7 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
         pct = prob * 100
         color = _color(cat)
         
-        # Always show at least 0.5% bar width for visibility
+        # Always show at least 0.5% for visibility
         bar_width = max(pct, 0.5)
         
         parts.append(f'''
@@ -450,7 +457,7 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
     st.markdown("".join(parts), unsafe_allow_html=True)
     
     # Show confidence level indicator
-    if max_conf < 0.3:
+    if max_conf < 0.30:
         st.markdown(
             f'''
             <div class="warning-box">
@@ -463,13 +470,13 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
                         <li>Text doesn't match any of the 5 categories</li>
                     </ul>
                     <br>
-                    <strong>Try:</strong> Add more text, use English content, or try a different article.
+                    <strong>Try:</strong> Use the sample article below or paste a longer English news article.
                 </div>
             </div>
             ''',
             unsafe_allow_html=True
         )
-    elif max_conf < 0.6:
+    elif max_conf < 0.60:
         st.markdown(
             f'''
             <div class="warning-box">
@@ -603,6 +610,28 @@ def render_ensemble_results(results: dict) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# Sample articles
+# --------------------------------------------------------------------------- #
+SAMPLE_ARTICLES = {
+    "Politics": """
+The National Assembly of Cambodia held its regular session today to discuss the national budget for the upcoming fiscal year. Prime Minister Hun Manet addressed the parliament, outlining the government's priorities including infrastructure development, education reform, and healthcare improvement. The budget proposal includes a 15% increase in education spending and significant investments in rural development. Opposition parties raised concerns about the transparency of the budget allocation process. The session was attended by all 125 members of parliament. The budget is expected to be voted on next week. This marks the first budget under the new government.
+""",
+    "Economics": """
+Cambodia's economy is showing strong growth with the Asian Development Bank projecting a 6.5% GDP increase for the upcoming year. The manufacturing sector, particularly garment exports, continues to be the main driver of economic growth. However, rising inflation and global economic uncertainty pose challenges for policymakers. The government is focusing on diversifying the economy through investments in tourism and technology. The National Bank of Cambodia has maintained stable monetary policy to support economic growth while managing inflation pressures. Trade with ASEAN partners has increased significantly.
+""",
+    "Technology": """
+Cambodia's digital economy is growing rapidly with the expansion of mobile internet and e-commerce platforms. The Ministry of Posts and Telecommunications announced a new digital payment system that will allow citizens to make transactions using QR codes. Several tech startups in Phnom Penh are developing innovative solutions for agriculture and logistics. The government plans to train 100,000 young Cambodians in digital skills over the next five years to support the growth of the technology sector. Mobile internet penetration has reached 70% of the population.
+""",
+    "Health": """
+Cambodia's healthcare system is undergoing significant reforms with the government increasing investment in public health infrastructure. The Ministry of Health announced a new program to improve maternal and child health services in rural areas. The program includes training for healthcare workers and the expansion of mobile health clinics. Cambodia has made significant progress in reducing maternal and child mortality rates. The government is also focusing on non-communicable diseases which are becoming a major health concern. International organizations are supporting these efforts.
+""",
+    "Sports": """
+Cambodia's national football team secured a place in the Southeast Asian Games semi-finals after a thrilling victory over their regional rivals. The team showed great determination and skill, with the winning goal scored in the final minutes of the match. The victory sparked celebrations across the country, with fans taking to social media to express their pride. The team will now prepare for the semi-final match against the defending champions. This is the best performance by the Cambodian national team in recent years.
+"""
+}
+
+
+# --------------------------------------------------------------------------- #
 # Classifier page
 # --------------------------------------------------------------------------- #
 def page_classifier() -> None:
@@ -615,7 +644,7 @@ def page_classifier() -> None:
             <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;">
                 <div>
                     <p class="card-title">Input Section</p>
-                    <p class="card-sub">Paste or upload news text for category classification.</p>
+                    <p class="card-sub">Paste news text for category classification.</p>
                 </div>
                 <div style="color:#111827;font-size:13px;">{chars:,} chars &nbsp;|&nbsp; {words:,} words</div>
             </div>
@@ -642,57 +671,57 @@ def page_classifier() -> None:
         else:
             st.error("⚠️ Predictor module not available. Please check your installation.")
 
-        tab_text, tab_pdf = st.tabs(["Direct Text Entry", "PDF Upload"])
-        with tab_text:
-            text = st.text_area(
-                "Text input",
-                value=st.session_state.input_text,
-                height=320,
-                label_visibility="collapsed",
-                placeholder="Paste news text here (English). Perfect for copied articles or short texts.",
-                key="text_area_input",
-            )
-            st.session_state.input_text = text
-            st.markdown(
-                f'<div class="input-hint">📝 {words} words detected. Minimum {MIN_WORDS} words recommended for reliable results.</div>',
-                unsafe_allow_html=True,
-            )
-
-        with tab_pdf:
-            st.markdown(
-                '<div style="color:#111827;font-weight:600;margin-bottom:8px;">Upload a PDF article</div>',
-                unsafe_allow_html=True,
-            )
-            pdf = st.file_uploader("Upload a PDF article", type=["pdf"], label_visibility="collapsed")
-            if pdf is not None:
-                try:
-                    import pdfplumber
-                    text_parts = []
-                    with pdfplumber.open(io.BytesIO(pdf.read())) as pdf_file:
-                        for page in pdf_file.pages:
-                            text_parts.append(page.extract_text() or "")
-                    extracted = "\n".join(text_parts).strip()
-                    if extracted:
-                        st.session_state.input_text = extracted
-                        text = extracted
-                        words = len(text.split())
-                        st.success(f"✅ Extracted {len(extracted.split()):,} words from PDF.")
-                        st.text_area("Extracted text", value=extracted, height=180)
-                except Exception as e:
-                    st.error(f"Could not read PDF: {e}")
+        # Text input
+        text = st.text_area(
+            "Text input",
+            value=st.session_state.input_text,
+            height=280,
+            label_visibility="collapsed",
+            placeholder="Paste news text here (English). Perfect for copied articles or short texts.",
+            key="text_area_input",
+        )
+        st.session_state.input_text = text
+        
+        word_count = len(text.split())
+        st.markdown(
+            f'<div class="input-hint">📝 {word_count} words detected. Minimum 20 words recommended for reliable results.</div>',
+            unsafe_allow_html=True,
+        )
+        
+        # Sample article button
+        if st.button("📄 Load Sample Article", use_container_width=True):
+            st.session_state.show_sample = not st.session_state.show_sample
+        
+        if st.session_state.show_sample:
+            st.markdown("""
+                <div class="sample-box">
+                    <div class="title">📄 Choose a Sample Article</div>
+                    <div class="content">
+                        Select a category below to load a sample article:
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            sample_cols = st.columns(5)
+            for idx, (cat, article) in enumerate(SAMPLE_ARTICLES.items()):
+                with sample_cols[idx]:
+                    if st.button(cat, key=f"sample_{cat}", use_container_width=True):
+                        st.session_state.input_text = article.strip()
+                        st.session_state.show_sample = False
+                        st.rerun()
 
         words = len(text.split())
         analyze = st.button(
             "Analyze Text",
             use_container_width=True,
             disabled=words == 0 or not PREDICTOR_AVAILABLE,
+            type="primary"
         )
         
         if analyze and PREDICTOR_AVAILABLE:
-            if words < MIN_WORDS:
+            if words < 20:
                 st.warning(
-                    f"⚠️ Only {words} words detected. {MIN_WORDS}+ words give more "
-                    "reliable results, but classifying anyway."
+                    f"⚠️ Only {words} words detected. 20+ words give more reliable results."
                 )
             
             try:
@@ -705,7 +734,6 @@ def page_classifier() -> None:
                     with st.spinner("Running inference…"):
                         scores = classify(text, st.session_state.model_key)
                         
-                        # Check if scores are valid
                         if not scores or max(scores.values()) == 0:
                             st.error("❌ Model returned no confidence. Please try a different article.")
                             return
@@ -724,7 +752,7 @@ def page_classifier() -> None:
                             "chars": len(text),
                             "words": words,
                             "preview": text.strip().replace("\n", " ")[:160],
-                            "is_low_confidence": max_conf < 0.3,
+                            "is_low_confidence": max_conf < 0.30,
                         }
                         st.session_state.last_multiple_results = None
                         st.session_state.history.insert(0, st.session_state.last_result)
@@ -741,14 +769,9 @@ def page_classifier() -> None:
                     '<div class="card placeholder-card">'
                     "<div style=\"font-size:48px;line-height:1;\">🎯</div>"
                     "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ensemble Mode Active</div>"
-                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">"
-                    "All models will run simultaneously and their predictions will be combined."
+                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;\">"
+                    "All models will run and their predictions will be combined."
                     "</div>"
-                    "<ul class=\"feature-list\">"
-                    "<li>Uses all available models</li>"
-                    "<li>Shows model agreement</li>"
-                    "<li>Ensemble prediction is more robust</li>"
-                    "</ul>"
                     "</div>",
                     unsafe_allow_html=True,
                 )
@@ -802,14 +825,14 @@ def page_classifier() -> None:
                 st.markdown(
                     '<div class="card placeholder-card">'
                     "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
-                    "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
-                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">"
-                    "<strong>DistilBERT</strong> is the default model (works best in practice)."
+                    "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify</div>"
+                    "<div style=\"margin-top:12px;color:#111827;font-size:14px;\">"
+                    "Paste a news article or load a sample."
                     "</div>"
                     "<ul class=\"feature-list\">"
-                    "<li>Supports news text input</li>"
-                    "<li>5-category classification model</li>"
+                    "<li>5-category classification</li>"
                     "<li>Confidence scores for all categories</li>"
+                    "<li>DistilBERT works best in practice</li>"
                     "</ul>"
                     "</div>",
                     unsafe_allow_html=True,
@@ -839,7 +862,7 @@ def page_classifier() -> None:
                 unsafe_allow_html=True,
             )
 
-            if result["words"] >= MIN_WORDS:
+            if result["words"] >= 20:
                 st.markdown(
                     '<p class="ok-note">✅ Text length is sufficient for classification</p>',
                     unsafe_allow_html=True,
