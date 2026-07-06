@@ -428,7 +428,7 @@ def render_header() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Confidence bars
+# Confidence bars - FIXED with unsafe_allow_html=True
 # --------------------------------------------------------------------------- #
 def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores") -> None:
     ordered = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
@@ -454,6 +454,7 @@ def render_scores(scores: dict[str, float], title: str = "📊 Confidence Scores
             </div>
         ''')
     
+    # CRITICAL FIX: Add unsafe_allow_html=True
     st.markdown("".join(parts), unsafe_allow_html=True)
     
     # Show confidence level indicator
