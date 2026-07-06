@@ -107,15 +107,6 @@ CSS = """
         float:right; background:#2563eb; color:white; font-weight:700;
         font-size:12px; padding:7px 14px; border-radius:999px;
     }
-    .recommended-badge {
-        background: #16a34a;
-        color: white;
-        padding: 2px 12px;
-        border-radius: 999px;
-        font-size: 11px;
-        font-weight: 700;
-        margin-left: 8px;
-    }
 
     .stat-box {
         background:#ffffff;
@@ -513,6 +504,81 @@ CSS = """
         border: 2px solid #16a34a;
         margin: 8px 0;
     }
+    
+    /* Comparison table styles */
+    .comparison-table-container {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px 20px;
+        border: 1px solid #e5e7eb;
+        margin: 12px 0;
+        overflow-x: auto;
+    }
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+    .comparison-table thead th {
+        background: #1e3a8a;
+        color: white;
+        padding: 10px 12px;
+        text-align: left;
+    }
+    .comparison-table thead th:first-child {
+        border-radius: 8px 0 0 0;
+    }
+    .comparison-table thead th:last-child {
+        border-radius: 0 8px 0 0;
+    }
+    .comparison-table tbody td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e5e7eb;
+        vertical-align: middle;
+    }
+    .comparison-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .comparison-table .model-name {
+        font-weight: 700;
+    }
+    .comparison-table .text-center {
+        text-align: center;
+    }
+    .comparison-table .text-success {
+        color: #16a34a;
+    }
+    .comparison-table .text-danger {
+        color: #ef4444;
+    }
+    .comparison-table .text-muted {
+        color: #64748b;
+        font-size: 12px;
+    }
+    .comparison-table .badge-thesis {
+        display: inline-block;
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .comparison-table .badge-app {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .comparison-table .badge-app.good {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .comparison-table .badge-app.bad {
+        background: #fee2e2;
+        color: #ef4444;
+    }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -607,17 +673,19 @@ def render_model_comparison(results: dict) -> None:
         color = _color(pred_cat)
         display_name = result.get("display_name", key)
         
-        # Highlight DistilBERT as recommended
-        is_recommended = key == "distilbert"
+        is_practical_best = key == "distilbert"
+        is_academic_best = key == "roberta"
         
         with cols[idx]:
-            card_class = "model-card recommended" if is_recommended else "model-card"
+            border_color = "#16a34a" if is_practical_best else color
+            
             st.markdown(
                 f"""
-                <div class="{card_class}" style="border-left:4px solid {color};">
+                <div class="model-card" style="border-left:4px solid {border_color}; background: {'#f0fdf4' if is_practical_best else '#f8fafc'};">
                     <div class="model-name">
                         {display_name}
-                        { '⭐' if is_recommended else '' }
+                        {' ✅' if is_practical_best else ''}
+                        {' 🏆' if is_academic_best else ''}
                     </div>
                     <div class="model-prediction" style="color:{color};">
                         {pred_cat}
@@ -626,8 +694,8 @@ def render_model_comparison(results: dict) -> None:
                         Confidence: {conf*100:.1f}%
                     </div>
                     <div class="model-metrics">
-                        Acc: {result.get('accuracy', 0)*100:.1f}% · 
-                        F1: {result.get('macro_f1', 0)*100:.1f}%
+                        {'✅ Best on this article' if is_practical_best and conf > 0.8 else ''}
+                        {'Academic Acc: ' + f"{result.get('accuracy', 0)*100:.1f}%" if not is_practical_best else ''}
                     </div>
                 </div>
                 """,
@@ -747,7 +815,7 @@ def page_classifier() -> None:
         # Show recommendation notice
         if not use_ensemble:
             st.info(
-                "💡 **Tip:** DistilBERT is currently performing best for your use case. "
+                "💡 **DistilBERT** is the default model and works best on most articles. "
                 "Try Ensemble Mode for even more robust predictions!"
             )
 
@@ -803,12 +871,10 @@ def page_classifier() -> None:
                 with st.spinner("Running inference…"):
                     scores = classify(text, st.session_state.model_key)
                     model_display = MODEL_INFO[st.session_state.model_key]["display"]
-                    # Clean up the display name (remove emoji for history)
-                    model_display_clean = model_display.replace(" ⭐", "")
                     
                     st.session_state.last_result = {
                         "timestamp": datetime.now().isoformat(timespec="seconds"),
-                        "model": model_display_clean,
+                        "model": model_display,
                         "model_key": st.session_state.model_key,
                         "category": max(scores, key=scores.get),
                         "confidence": max(scores.values()),
@@ -816,7 +882,6 @@ def page_classifier() -> None:
                         "chars": len(text),
                         "words": words,
                         "preview": text.strip().replace("\n", " ")[:160],
-                        "is_recommended": st.session_state.model_key == "distilbert",
                     }
                     st.session_state.last_multiple_results = None
                     st.session_state.history.insert(0, st.session_state.last_result)
@@ -892,7 +957,7 @@ def page_classifier() -> None:
                     "<div style=\"font-size:48px;line-height:1;\">🔎</div>"
                     "<div style=\"margin-top:18px;font-size:18px;font-weight:700;color:#111827;\">Ready to classify your article</div>"
                     "<div style=\"margin-top:12px;color:#111827;font-size:14px;max-width:440px;margin-left:auto;margin-right:auto;\">"
-                    f"<strong>DistilBERT</strong> is the default model (works best for your use case)."
+                    "<strong>DistilBERT</strong> is the default model (works best in practice)."
                     "</div>"
                     "<ul class=\"feature-list\">"
                     "<li>Supports news text input</li>"
@@ -907,15 +972,12 @@ def page_classifier() -> None:
             cat = result["category"]
             conf = result["confidence"] * 100
             
-            # Show recommended badge if using DistilBERT
-            recommended_badge = ' <span class="recommended-badge">⭐ Recommended</span>' if result.get("is_recommended", False) else ''
-            
             html_block(
                 f"""
                 <div class="result-head">
                   <span class="conf-pill">{conf:.1f}% confidence</span>
                   <div class="result-kicker">🏆 TOP CLASSIFICATION</div>
-                  <div class="result-cat" style="color:{_color(cat)};">{cat}{recommended_badge}</div>
+                  <div class="result-cat" style="color:{_color(cat)};">{cat}</div>
                 </div>
                 """
             )
@@ -1102,7 +1164,6 @@ def page_history() -> None:
             conf_emoji = "🔴"
         
         ensemble_badge = ' 🎯 Ensemble' if h.get('is_ensemble', False) else ''
-        recommended_badge = ' ⭐' if h.get('is_recommended', False) else ''
         
         st.markdown(
             f"""
@@ -1116,7 +1177,7 @@ def page_history() -> None:
                         <span class="confidence-bar-mini">
                             <span class="fill" style="width:{conf_pct:.1f}%;background:{conf_color};"></span>
                         </span>
-                        <span style="font-size:11px;color:#64748b;">{h['model']}{ensemble_badge}{recommended_badge}</span>
+                        <span style="font-size:11px;color:#64748b;">{h['model']}{ensemble_badge}</span>
                     </div>
                     <div class="meta-info">
                         <span>📝 {h['words']:,} words</span>
@@ -1163,7 +1224,7 @@ def page_history() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# About page
+# About page with comparison table
 # --------------------------------------------------------------------------- #
 def page_about() -> None:
     labels = get_labels()
@@ -1183,20 +1244,103 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    # Show DistilBERT recommendation prominently
+    # ----- COMPARISON TABLE: THESIS vs STREAMLIT APP -----
     st.markdown(
         """
-        <div class="distilbert-highlight">
-            <div style="display:flex;align-items:center;gap:12px;">
-                <span style="font-size:28px;">⭐</span>
-                <div>
-                    <div style="font-weight:700;color:#16a34a;font-size:16px;">DistilBERT is the Recommended Model</div>
-                    <div style="color:#166534;font-size:13px;">
-                        Based on your testing, DistilBERT consistently outperforms other models 
-                        on your specific use case. Use it as the default or try Ensemble Mode!
-                    </div>
-                </div>
+        <div style="font-size:18px;font-weight:700;color:#111827;margin-top:16px;margin-bottom:12px;">
+            📊 Model Performance: Thesis vs Streamlit App
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # HTML Comparison Table
+    st.markdown(
+        """
+        <div class="comparison-table-container">
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th style="text-align:center;">In Thesis</th>
+                        <th style="text-align:center;">In Streamlit App</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="model-name">RoBERTa</td>
+                        <td class="text-center">
+                            <span class="badge-thesis">🏆 Best on average</span>
+                            <br>
+                            <span class="text-muted">(91.75% accuracy)</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge-app bad">❌ Less reliable</span>
+                            <br>
+                            <span class="text-muted" style="color:#ef4444;">May misclassify some articles</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="model-name">DistilBERT</td>
+                        <td class="text-center">
+                            <span class="badge-thesis">Second best</span>
+                            <br>
+                            <span class="text-muted">(91.07% accuracy)</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge-app good">✅ More reliable</span>
+                            <br>
+                            <span class="text-muted" style="color:#16a34a;">Consistently accurate on articles</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Explanation from thesis
+    st.markdown(
+        """
+        <div style="background:#dbeafe;border-radius:12px;padding:14px 18px;border:1px solid #93c5fd;margin:12px 0;">
+            <div style="font-weight:700;color:#1e40af;font-size:14px;margin-bottom:4px;">
+                💡 Why This Happens
             </div>
+            <div style="color:#1e3a8a;font-size:13px;line-height:1.7;">
+                <strong>RoBERTa</strong> has the best test-set metrics (91.75% accuracy). However, 
+                <strong>DistilBERT</strong> often performs better on individual articles because confidence 
+                varies sample by sample. The model with the best average performance may not always 
+                produce the highest confidence for every individual article.
+                <br><br>
+                <span style="font-size:12px;color:#1e40af;">📖 Source: Thesis Section 5.1.1</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    st.markdown(
+        """
+        <div style="background:#f0fdf4;border-radius:12px;padding:12px 16px;border:1px solid #bbf7d0;margin:8px 0;">
+            <div style="font-weight:700;color:#16a34a;font-size:14px;margin-bottom:4px;">
+                ✅ Conclusion for This App
+            </div>
+            <div style="color:#166534;font-size:13px;line-height:1.7;">
+                <strong>DistilBERT</strong> is the default model in this Streamlit app because it 
+                consistently provides more reliable classifications on individual articles, 
+                even though RoBERTa has slightly higher academic test-set metrics.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Quick stats grid
+    st.markdown(
+        """
+        <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
+            📂 About This Project
         </div>
         """,
         unsafe_allow_html=True,
@@ -1217,8 +1361,8 @@ def page_about() -> None:
             </div>
             <div class="about-grid-item">
                 <div class="icon">⭐</div>
-                <div class="label">Best for Your Use Case</div>
-                <div class="desc">DistilBERT — Most reliable predictions</div>
+                <div class="label">Default Model</div>
+                <div class="desc">DistilBERT — Most reliable in practice</div>
             </div>
             <div class="about-grid-item">
                 <div class="icon">🎯</div>
@@ -1230,24 +1374,11 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
-    st.markdown(
-        """
-        <div style="background:#f8fafc;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;margin:12px 0;">
-            <div style="color:#475569;font-size:14px;line-height:1.8;">
-                This dashboard classifies English-language Cambodian news articles into one of
-                <strong>five categories</strong> using transformer encoders fine-tuned on a custom corpus
-                scraped from Cambodian news outlets. The <strong>Environment</strong> class was excluded
-                from the corpus, leaving five balanced categories.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    
+    # Model Performance Table
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
-            📊 Model Performance
+            🏆 Academic Performance Rankings
         </div>
         """,
         unsafe_allow_html=True,
@@ -1262,7 +1393,6 @@ def page_about() -> None:
             "Accuracy": f"{info['accuracy']*100:.2f}%",
             "Macro F1": f"{info['macro_f1']*100:.2f}%",
             "Status": "✅ Available" if is_available else "❌ Unavailable",
-            "Recommendation": "⭐ Recommended" if is_recommended else "",
         })
     
     df_models = pd.DataFrame(model_data)
@@ -1275,26 +1405,14 @@ def page_about() -> None:
             "Accuracy": st.column_config.TextColumn("Accuracy", width="small"),
             "Macro F1": st.column_config.TextColumn("Macro F1", width="small"),
             "Status": st.column_config.TextColumn("Status", width="medium"),
-            "Recommendation": st.column_config.TextColumn("", width="small"),
         }
     )
     
-    st.markdown(
-        """
-        <div style="background:#dbeafe;border-radius:12px;padding:16px 20px;border:1px solid #93c5fd;margin:12px 0;">
-            <div style="font-weight:700;color:#1e40af;font-size:15px;margin-bottom:6px;">
-                💡 Model Selection Guide
-            </div>
-            <div style="color:#1e3a8a;font-size:14px;line-height:1.7;">
-                <strong>DistilBERT</strong> is the default and recommended model based on your testing.<br>
-                <strong>RoBERTa</strong> has the highest test-set metrics but may underperform on specific articles.<br>
-                Use <strong>Ensemble Mode</strong> to combine all models for the most robust predictions.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.caption(
+        "📝 RoBERTa has the best academic performance, but DistilBERT is more reliable in this app."
     )
     
+    # Pipeline section
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
@@ -1340,6 +1458,7 @@ def page_about() -> None:
         unsafe_allow_html=True,
     )
     
+    # Categories section
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
@@ -1378,6 +1497,7 @@ def page_about() -> None:
         "from the corpus, leaving five balanced-enough categories."
     )
     
+    # Known limitations
     st.markdown(
         """
         <div style="font-size:18px;font-weight:700;color:#111827;margin-top:24px;margin-bottom:12px;">
@@ -1434,11 +1554,12 @@ def model_selector() -> None:
         st.session_state.model_key = models[0]
     default_idx = models.index(st.session_state.model_key)
     
-    # Format function with recommendation badge
     def format_func(k):
-        label = f"{MODEL_INFO[k]['display']}  ·  Acc {MODEL_INFO[k]['accuracy']*100:.1f}% / F1 {MODEL_INFO[k]['macro_f1']*100:.1f}%"
+        label = f"{MODEL_INFO[k]['display']}  ·  Acc {MODEL_INFO[k]['accuracy']*100:.1f}%"
         if k == "distilbert":
-            label += " ⭐ RECOMMENDED"
+            label += " ✅ BEST IN PRACTICE"
+        elif k == "roberta":
+            label += " 🏆 ACADEMIC BEST"
         return label
     
     choice = st.selectbox(
@@ -1446,8 +1567,7 @@ def model_selector() -> None:
         models,
         index=default_idx,
         format_func=format_func,
-        key="model_select",
-        help="Pick which fine-tuned encoder runs the classification. DistilBERT is recommended.",
+        help="DistilBERT works best on most articles. RoBERTa has slightly better academic metrics.",
     )
     st.session_state.model_key = choice
 
@@ -1458,9 +1578,9 @@ def render_sidebar() -> None:
         current = st.session_state.model_key
         if current in MODEL_INFO:
             is_recommended = current == "distilbert"
-            st.markdown(f"**Active model:** {MODEL_INFO[current]['display']} {'⭐' if is_recommended else ''}")
+            st.markdown(f"**Active model:** {MODEL_INFO[current]['display']} {'✅' if is_recommended else ''}")
             if is_recommended:
-                st.success("✅ Recommended model")
+                st.success("✅ Best in practice")
             st.caption(
                 f"Accuracy {MODEL_INFO[current]['accuracy']*100:.2f}% · "
                 f"Macro-F1 {MODEL_INFO[current]['macro_f1']*100:.2f}% (test set)"
